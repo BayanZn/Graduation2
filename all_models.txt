@@ -1,0 +1,1116 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Conversation extends Model
+{
+    protected $fillable = [
+        'type',
+        'project_id',
+        'name',
+        'last_message_at',
+        'created_by',
+    ];
+
+    protected $casts = [
+        'last_message_at' => 'datetime',
+    ];
+
+    /**
+     * Get the project associated with this conversation.
+     */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Get the creator of the conversation.
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get all participants of the conversation.
+     */
+    public function participants(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'conversation_participants')
+            ->withPivot(['role', 'unread_count', 'last_read_at', 'joined_at'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get all messages in the conversation.
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class)->orderBy('created_at', 'asc');
+    }
+
+    /**
+     * Get the latest message in the conversation.
+     */
+    public function latestMessage(): HasMany
+    {
+        return $this->hasMany(Message::class)->latest();
+    }
+
+    /**
+     * Scope a query to only include direct conversations.
+     */
+    public function scopeDirect($query)
+    {
+        return $query->where('type', 'direct');
+    }
+
+    /**
+     * Scope a query to only include project group conversations.
+     */
+    public function scopeProjectGroup($query)
+    {
+        return $query->where('type', 'project_group');
+    }
+
+    /**
+     * Check if conversation is a direct chat.
+     */
+    public function isDirectChat(): bool
+    {
+        return $this->type === 'direct';
+    }
+
+    /**
+     * Check if conversation is a project group.
+     */
+    public function isProjectGroup(): bool
+    {
+        return $this->type === 'project_group';
+    }
+
+    /**
+     * Scope a query to only include admin support conversations.
+     */
+    public function scopeAdminSupport($query)
+    {
+        return $query->where('type', 'admin_support');
+    }
+
+    /**
+     * Check if conversation is admin support.
+     */
+    public function isAdminSupport(): bool
+    {
+        return $this->type === 'admin_support';
+    }
+
+    /**
+     * Get or create an admin support conversation for a user.
+     */
+    public static function getOrCreateAdminSupport(User $user): self
+    {
+        // Find existing admin support conversation
+        $conversation = self::where('type', 'admin_support')
+            ->whereHas('participants', function ($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })
+            ->first();
+
+        if ($conversation) {
+            return $conversation;
+        }
+
+        // Create new admin support conversation
+        $conversation = self::create([
+            'type' => 'admin_support',
+            'name' => 'Support Chat - ' . $user->name,
+            'created_by' => $user->id,
+        ]);
+
+        // Add the user
+        $conversation->addParticipant($user, 'user');
+
+        // Add all super admins
+        $superAdmins = User::role('Super Admin')->get();
+        foreach ($superAdmins as $admin) {
+            $conversation->addParticipant($admin, 'admin');
+        }
+
+        // Post system message
+        Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => null,
+            'message' => 'Support chat created. A Super Admin will assist you shortly.',
+            'type' => 'system',
+        ]);
+
+        return $conversation;
+    }
+
+    /**
+     * Add a participant to the conversation.
+     */
+    public function addParticipant(User $user, string $role = 'member'): void
+    {
+        $this->participants()->attach($user->id, [
+            'role' => $role,
+            'joined_at' => now(),
+        ]);
+    }
+
+    /**
+     * Remove a participant from the conversation.
+     */
+    public function removeParticipant(User $user): void
+    {
+        $this->participants()->detach($user->id);
+    }
+
+    /**
+     * Get unread count for a specific user.
+     */
+    public function getUnreadCountFor(User $user): int
+    {
+        $participant = $this->participants()->where('user_id', $user->id)->first();
+
+        return $participant?->pivot->unread_count ?? 0;
+    }
+
+    /**
+     * Reset unread count for a specific user.
+     */
+    public function resetUnreadCountFor(User $user): void
+    {
+        $this->participants()->updateExistingPivot($user->id, [
+            'unread_count' => 0,
+            'last_read_at' => now(),
+        ]);
+    }
+
+    /**
+     * Increment unread count for all participants except sender.
+     */
+    public function incrementUnreadCountExcept(User $sender): void
+    {
+        $this->participants()
+            ->where('user_id', '!=', $sender->id)
+            ->increment('unread_count');
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ConversationParticipant extends Model
+{
+    protected $fillable = [
+        'conversation_id',
+        'user_id',
+        'role',
+        'unread_count',
+        'last_read_at',
+        'joined_at',
+    ];
+
+    protected $casts = [
+        'last_read_at' => 'datetime',
+        'joined_at' => 'datetime',
+    ];
+
+    /**
+     * Get the conversation.
+     */
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(Conversation::class);
+    }
+
+    /**
+     * Get the user.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Currency extends Model
+{
+    protected $guarded = [];
+}
+<?php
+
+namespace App\Models;
+
+use App\Traits\AddLogOptions;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+class Defense extends Model
+{
+    use AddLogOptions, LogsActivity;
+
+    protected $guarded = [];
+
+    protected $log_name = 'defenses';
+
+    protected $casts = [
+        'discussion_date' => 'datetime',
+    ];
+
+    /**
+     * Get the project that this defense belongs to.
+     */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Get the user who created this defense.
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get all members (supervisors) assigned to this defense.
+     */
+    public function members(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'defense_members')
+            ->withTimestamps();
+    }
+
+    /**
+     * Add a member (supervisor) to this defense.
+     */
+    public function addMember($userId): void
+    {
+        if (! $this->members()->where('user_id', $userId)->exists()) {
+            $this->members()->attach($userId);
+        }
+    }
+
+    /**
+     * Remove a member from this defense.
+     */
+    public function removeMember($userId): void
+    {
+        $this->members()->detach($userId);
+    }
+
+    /**
+     * Check if the defense is scheduled.
+     */
+    public function isScheduled(): bool
+    {
+        return $this->status === 'scheduled';
+    }
+
+    /**
+     * Check if the defense is completed.
+     */
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
+    }
+
+    /**
+     * Check if the defense is cancelled.
+     */
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
+    /**
+     * Check if the defense can be modified.
+     */
+    public function canBeModified(): bool
+    {
+        return $this->status === 'scheduled';
+    }
+
+    /**
+     * Mark the defense as completed.
+     */
+    public function markAsCompleted(): void
+    {
+        $this->update(['status' => 'completed']);
+    }
+
+    /**
+     * Mark the defense as cancelled.
+     */
+    public function markAsCancelled(): void
+    {
+        $this->update(['status' => 'cancelled']);
+    }
+
+    /**
+     * Scope a query to only include scheduled defenses.
+     */
+    public function scopeScheduled($query)
+    {
+        return $query->where('status', 'scheduled');
+    }
+
+    /**
+     * Scope a query to only include completed defenses.
+     */
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
+    }
+
+    /**
+     * Scope a query to only include cancelled defenses.
+     */
+    public function scopeCancelled($query)
+    {
+        return $query->where('status', 'cancelled');
+    }
+
+    /**
+     * Scope a query to filter by discussion type.
+     */
+    public function scopeOfType($query, $type)
+    {
+        return $query->where('discussion_type', $type);
+    }
+}
+<?php
+
+namespace App\Models;
+
+use App\Traits\AddLogOptions;
+use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+class Department extends Model
+{
+    use AddLogOptions, LogsActivity;
+
+    protected $guarded = [];
+
+    protected $log_name = 'departments';
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Message extends Model
+{
+
+    protected $fillable = [
+        'conversation_id',
+        'sender_id',
+        'message',
+        'type',
+        'read_at',
+    ];
+
+    protected $casts = [
+        'read_at' => 'datetime',
+    ];
+
+    protected $with = ['sender'];
+
+    /**
+     * Get the conversation that owns the message.
+     */
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(Conversation::class);
+    }
+
+    /**
+     * Get the sender of the message.
+     */
+    public function sender(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sender_id');
+    }
+
+    /**
+     * Get all read receipts for this message.
+     */
+    public function reads(): HasMany
+    {
+        return $this->hasMany(MessageRead::class);
+    }
+
+    /**
+     * Check if message has been read by user.
+     */
+    public function hasBeenReadBy(User $user): bool
+    {
+        return $this->reads()->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * Mark message as read by user.
+     */
+    public function markAsReadBy(User $user): void
+    {
+        if (!$this->hasBeenReadBy($user)) {
+            $this->reads()->create([
+                'user_id' => $user->id,
+                'read_at' => now(),
+            ]);
+        }
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class MessageRead extends Model
+{
+    protected $fillable = [
+        'message_id',
+        'user_id',
+        'read_at',
+    ];
+
+    protected $casts = [
+        'read_at' => 'datetime',
+    ];
+
+    /**
+     * Get the message that was read.
+     */
+    public function message(): BelongsTo
+    {
+        return $this->belongsTo(Message::class);
+    }
+
+    /**
+     * Get the user who read the message.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class PaymentMethod extends Model
+{
+    protected $guarded = [];
+}
+<?php
+
+namespace App\Models;
+
+use App\Traits\AddLogOptions;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Auth;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+class Project extends Model
+{
+    use AddLogOptions, LogsActivity;
+
+    protected $guarded = [];
+
+    protected $log_name = 'projects';
+
+    public function specialization(): BelongsTo
+    {
+        return $this->belongsTo(Specialization::class, 'specialization_id', 'id');
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'department_id', 'id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by', 'id');
+    }
+
+    /**
+     * Get all assignments for this project.
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(ProjectAssignment::class);
+    }
+
+    /**
+     * Get all supervisors assigned to this project.
+     */
+    public function supervisors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'project_assignments')
+            ->wherePivot('role', 'supervisor')
+            ->withPivot(['assigned_by', 'assigned_at'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get all students assigned to this project.
+     */
+    public function students(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'project_assignments')
+            ->wherePivot('role', 'student')
+            ->withPivot(['assigned_by', 'assigned_at'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Assign a supervisor to this project.
+     */
+    public function assignSupervisor($userId): void
+    {
+        if (! $this->supervisors()->where('user_id', $userId)->exists()) {
+            ProjectAssignment::create([
+                'project_id' => $this->id,
+                'user_id' => $userId,
+                'role' => 'supervisor',
+                'assigned_by' => Auth::id(),
+                'assigned_at' => now(),
+            ]);
+
+            // Add supervisor to existing project group conversation if exists
+            $this->syncConversationParticipants();
+        }
+    }
+
+    /**
+     * Assign a student to this project.
+     */
+    public function assignStudent($userId): void
+    {
+        // Check if student is already assigned
+        if ($this->students()->where('user_id', $userId)->exists()) {
+            return;
+        }
+
+        // Check if project already has 3 students (max limit)
+        if ($this->students()->count() >= 3) {
+            throw new \Exception('Cannot assign student: Project has reached the maximum of 3 students.');
+        }
+
+        ProjectAssignment::create([
+            'project_id' => $this->id,
+            'user_id' => $userId,
+            'role' => 'student',
+            'assigned_by' => Auth::id(),
+            'assigned_at' => now(),
+        ]);
+
+        // Add student to existing project group conversation if exists
+        $this->syncConversationParticipants();
+    }
+
+    /**
+     * Remove a supervisor from this project.
+     */
+    public function removeSupervisor($userId): void
+    {
+        ProjectAssignment::where('project_id', $this->id)
+            ->where('user_id', $userId)
+            ->where('role', 'supervisor')
+            ->delete();
+
+        // Remove supervisor from project group conversation if exists
+        $this->syncConversationParticipants();
+    }
+
+    /**
+     * Remove a student from this project.
+     */
+    public function removeStudent($userId): void
+    {
+        ProjectAssignment::where('project_id', $this->id)
+            ->where('user_id', $userId)
+            ->where('role', 'student')
+            ->delete();
+
+        // Remove student from project group conversation if exists
+        $this->syncConversationParticipants();
+    }
+
+    /**
+     * Sync conversation participants with current project assignments.
+     */
+    public function syncConversationParticipants(): void
+    {
+        $conversation = Conversation::where('project_id', $this->id)
+            ->where('type', 'project_group')
+            ->first();
+
+        if (!$conversation) {
+            return;
+        }
+
+        // Get all current supervisors and students
+        $supervisors = $this->supervisors()->get();
+        $students = $this->students()->get();
+
+        // Get current participants
+        $currentParticipants = $conversation->participants()->pluck('user_id')->toArray();
+
+        // Add new participants
+        foreach ($supervisors as $supervisor) {
+            if (!in_array($supervisor->id, $currentParticipants)) {
+                $conversation->addParticipant($supervisor, 'supervisor');
+            }
+        }
+
+        foreach ($students as $student) {
+            if (!in_array($student->id, $currentParticipants)) {
+                $conversation->addParticipant($student, 'student');
+            }
+        }
+
+        // Remove participants who are no longer assigned
+        $assignedUserIds = $supervisors->pluck('id')->merge($students->pluck('id'))->toArray();
+        $participantsToRemove = array_diff($currentParticipants, $assignedUserIds);
+
+        foreach ($participantsToRemove as $userId) {
+            $user = User::find($userId);
+            if ($user) {
+                $conversation->removeParticipant($user);
+            }
+        }
+    }
+
+    /**
+     * Check if the project has any assignments.
+     */
+    public function isAssigned(): bool
+    {
+        return $this->assignments()->exists();
+    }
+
+    /**
+     * Check if the project is fully assigned (has both supervisors and students).
+     */
+    public function isFullyAssigned(): bool
+    {
+        return $this->supervisors()->exists() && $this->students()->exists();
+    }
+
+    /**
+     * Get all defenses for this project.
+     */
+    public function defenses(): HasMany
+    {
+        return $this->hasMany(Defense::class);
+    }
+
+    /**
+     * Get all submissions for this project.
+     */
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(ProjectSubmission::class);
+    }
+
+    /**
+     * Schedule a defense for this project.
+     */
+    public function scheduleDefense(array $data): Defense
+    {
+        return $this->defenses()->create(array_merge($data, [
+            'created_by' => Auth::id(),
+        ]));
+    }
+
+    /**
+     * Check if the project has a defense of a specific type.
+     */
+    public function hasDefense(string $type): bool
+    {
+        return $this->defenses()->where('discussion_type', $type)->exists();
+    }
+
+    /**
+     * Get the latest defense for this project.
+     */
+    public function latestDefense()
+    {
+        return $this->defenses()->latest('discussion_date')->first();
+    }
+
+    /**
+     * Get defenses by type.
+     */
+    public function getDefenseByType(string $type)
+    {
+        return $this->defenses()->where('discussion_type', $type)->first();
+    }
+}
+<?php
+
+namespace App\Models;
+
+use App\Traits\AddLogOptions;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+class ProjectAssignment extends Model
+{
+    use AddLogOptions, LogsActivity;
+
+    protected $log_name = 'project_assignments';
+
+    protected $guarded = [];
+
+    protected $casts = [
+        'assigned_at' => 'datetime',
+    ];
+
+    /**
+     * Get the project that owns the assignment.
+     */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Get the user (student or supervisor) assigned to the project.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the user who made the assignment.
+     */
+    public function assignedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    /**
+     * Scope a query to only include supervisors.
+     */
+    public function scopeSupervisors($query)
+    {
+        return $query->where('role', 'supervisor');
+    }
+
+    /**
+     * Scope a query to only include students.
+     */
+    public function scopeStudents($query)
+    {
+        return $query->where('role', 'student');
+    }
+
+    /**
+     * Scope a query to filter by project.
+     */
+    public function scopeForProject($query, $projectId)
+    {
+        return $query->where('project_id', $projectId);
+    }
+}
+<?php
+
+namespace App\Models;
+
+use App\Traits\AddLogOptions;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+class ProjectRequest extends Model
+{
+    use AddLogOptions, LogsActivity;
+
+    protected $guarded = [];
+
+    protected $log_name = 'project_requests';
+
+    protected $casts = [
+        'group_members' => 'array',
+        'reviewed_at' => 'datetime',
+    ];
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'student_id');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+}
+<?php
+
+namespace App\Models;
+
+use App\Traits\AddLogOptions;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+class ProjectSubmission extends Model
+{
+    use AddLogOptions, LogsActivity;
+
+    protected $log_name = 'project_submissions';
+
+    protected $guarded = [];
+
+    protected $casts = [
+        'reviewed_at' => 'datetime',
+    ];
+
+    /**
+     * Get the project that owns the submission.
+     */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Get the user who uploaded the submission.
+     */
+    public function uploadedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    /**
+     * Get the supervisor who reviewed the submission.
+     */
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    /**
+     * Scope a query to only include pending submissions.
+     */
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    /**
+     * Scope a query to only include approved submissions.
+     */
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    /**
+     * Scope a query to only include rejected submissions.
+     */
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
+    }
+
+    /**
+     * Scope a query to filter by project.
+     */
+    public function scopeForProject($query, $projectId)
+    {
+        return $query->where('project_id', $projectId);
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+
+class Setting extends Model implements HasMedia
+{
+    use HasFactory, InteractsWithMedia;
+
+    protected $log_name = 'general_settings';
+
+    protected $guarded = [];
+
+    protected $with = ['currency'];
+
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class, 'currency_id', 'id');
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('logo')
+            ->useFallbackUrl('https://placeholder.com/100x50');
+        $this->addMediaCollection('favicon')
+            ->useFallbackUrl('https://placeholder.com/32x32');
+    }
+}
+<?php
+
+namespace App\Models;
+
+use App\Traits\AddLogOptions;
+use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+class Specialization extends Model
+{
+    use AddLogOptions, LogsActivity;
+
+    protected $guarded = [];
+
+    protected $log_name = 'specializations';
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+
+class Upload extends Model implements HasMedia
+{
+    use InteractsWithMedia;
+
+    protected $guarded = [];
+}
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Spatie\Activitylog\Traits\CausesActivity;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\Permission\Traits\HasRoles;
+
+class User extends Authenticatable implements HasMedia
+{
+    use CausesActivity, HasApiTokens, HasFactory, HasRoles, InteractsWithMedia, Notifiable;
+
+    protected $with = ['roles', 'media'];
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'mobile',
+        'address',
+        'gender',
+        'first_name',
+        'last_name',
+        'date_of_birth',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('avatar')
+            ->useFallbackUrl('https://www.gravatar.com/avatar/andfajk8230sdfma');
+    }
+
+    /**
+     * Get the project assignments for the user.
+     */
+    public function assignments()
+    {
+        return $this->hasMany(ProjectAssignment::class);
+    }
+
+    /**
+     * Get all conversations the user is participating in.
+     */
+    public function conversations()
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_participants')
+            ->withPivot(['role', 'unread_count', 'last_read_at', 'joined_at'])
+            ->withTimestamps()
+            ->orderBy('last_message_at', 'desc');
+    }
+
+    /**
+     * Get all messages sent by the user.
+     */
+    public function messages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+}

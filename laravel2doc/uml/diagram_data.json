@@ -1,0 +1,1167 @@
+{
+  "models": [
+    {
+      "name": "Conversation",
+      "properties": [
+        {
+          "name": "type",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "project_id",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "name",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "last_message_at",
+          "type": "fillable",
+          "dataType": "datetime"
+        },
+        {
+          "name": "created_by",
+          "type": "fillable",
+          "dataType": ""
+        }
+      ],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "ConversationParticipant",
+      "properties": [
+        {
+          "name": "conversation_id",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "user_id",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "role",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "unread_count",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "last_read_at",
+          "type": "fillable",
+          "dataType": "datetime"
+        },
+        {
+          "name": "joined_at",
+          "type": "fillable",
+          "dataType": "datetime"
+        }
+      ],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "Currency",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "Defense",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "Department",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "Message",
+      "properties": [
+        {
+          "name": "conversation_id",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "sender_id",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "message",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "type",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "read_at",
+          "type": "fillable",
+          "dataType": "datetime"
+        }
+      ],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "MessageRead",
+      "properties": [
+        {
+          "name": "message_id",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "user_id",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "read_at",
+          "type": "fillable",
+          "dataType": "datetime"
+        }
+      ],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "PaymentMethod",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "Project",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "ProjectAssignment",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "ProjectRequest",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "ProjectSubmission",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "Setting",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "Specialization",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "Upload",
+      "properties": [],
+      "methods": [],
+      "namespace": "App\\Models"
+    },
+    {
+      "name": "User",
+      "properties": [
+        {
+          "name": "name",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "email",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "password",
+          "type": "fillable",
+          "dataType": "hashed"
+        },
+        {
+          "name": "mobile",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "address",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "gender",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "first_name",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "last_name",
+          "type": "fillable",
+          "dataType": ""
+        },
+        {
+          "name": "date_of_birth",
+          "type": "fillable",
+          "dataType": ""
+        }
+      ],
+      "methods": [],
+      "namespace": "App\\Models"
+    }
+  ],
+  "controllers": [
+    {
+      "name": "ActivityLogsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "destroy",
+          "params": "Activity $activity_log"
+        },
+        {
+          "name": "destroyMultiple",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin"
+    },
+    {
+      "name": "DashboardController",
+      "methods": [
+        {
+          "name": "dashboard",
+          "params": ""
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Dashboard"
+    },
+    {
+      "name": "ProjectRequestsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "show",
+          "params": "ProjectRequest $projectRequest"
+        },
+        {
+          "name": "approve",
+          "params": "Request $request, ProjectRequest $projectRequest"
+        },
+        {
+          "name": "reject",
+          "params": "Request $request, ProjectRequest $projectRequest"
+        },
+        {
+          "name": "resetToPending",
+          "params": "ProjectRequest $projectRequest"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin"
+    },
+    {
+      "name": "AssignmentsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "create",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "show",
+          "params": "Project $project"
+        },
+        {
+          "name": "edit",
+          "params": "Project $project"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, Project $project"
+        },
+        {
+          "name": "destroy",
+          "params": "Project $project"
+        },
+        {
+          "name": "removeSupervisor",
+          "params": "Project $project, User $user"
+        },
+        {
+          "name": "removeStudent",
+          "params": "Project $project, User $user"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Projects"
+    },
+    {
+      "name": "DefensesController",
+      "methods": [
+        {
+          "name": "index",
+          "params": "Request $request"
+        },
+        {
+          "name": "create",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "show",
+          "params": "Defense $defense"
+        },
+        {
+          "name": "edit",
+          "params": "Defense $defense"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, Defense $defense"
+        },
+        {
+          "name": "destroy",
+          "params": "Defense $defense"
+        },
+        {
+          "name": "removeMember",
+          "params": "Defense $defense, User $user"
+        },
+        {
+          "name": "updateStatus",
+          "params": "Request $request, Defense $defense"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Projects"
+    },
+    {
+      "name": "DepartmentsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "edit",
+          "params": "string $id"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, Department $department"
+        },
+        {
+          "name": "destroy",
+          "params": "Department $department"
+        },
+        {
+          "name": "export",
+          "params": ""
+        },
+        {
+          "name": "import",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Projects"
+    },
+    {
+      "name": "ProjectsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "proposed",
+          "params": ""
+        },
+        {
+          "name": "approved",
+          "params": ""
+        },
+        {
+          "name": "declined",
+          "params": ""
+        },
+        {
+          "name": "create",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "show",
+          "params": "Project $project"
+        },
+        {
+          "name": "edit",
+          "params": "Project $project"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, Project $project"
+        },
+        {
+          "name": "updateStatus",
+          "params": "Request $request, Project $project"
+        },
+        {
+          "name": "updateType",
+          "params": "Request $request, Project $project"
+        },
+        {
+          "name": "destroy",
+          "params": "Project $project"
+        },
+        {
+          "name": "export",
+          "params": ""
+        },
+        {
+          "name": "import",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Projects"
+    },
+    {
+      "name": "SpecializationsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "edit",
+          "params": "string $id"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, Specialization $specialization"
+        },
+        {
+          "name": "destroy",
+          "params": "Specialization $specialization"
+        },
+        {
+          "name": "export",
+          "params": ""
+        },
+        {
+          "name": "import",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Projects"
+    },
+    {
+      "name": "CurrenciesController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "edit",
+          "params": "Currency $currency"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, Currency $currency"
+        },
+        {
+          "name": "destroy",
+          "params": "Currency $currency"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Settings"
+    },
+    {
+      "name": "PaymentMethodsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "edit",
+          "params": "string $id"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, PaymentMethod $payment_method"
+        },
+        {
+          "name": "destroy",
+          "params": "PaymentMethod $payment_method"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Settings"
+    },
+    {
+      "name": "SettingsController",
+      "methods": [
+        {
+          "name": "edit",
+          "params": ""
+        },
+        {
+          "name": "update",
+          "params": "Request $request, Setting $setting"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Settings"
+    },
+    {
+      "name": "RolesController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "create",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "edit",
+          "params": "$id"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, Role $role"
+        },
+        {
+          "name": "destroy",
+          "params": "Role $role"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Users"
+    },
+    {
+      "name": "StudentsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Users"
+    },
+    {
+      "name": "SupervisorsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Users"
+    },
+    {
+      "name": "UsersController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "create",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request, UploadService $upload"
+        },
+        {
+          "name": "edit",
+          "params": "User $user"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, User $user, UploadService $upload"
+        },
+        {
+          "name": "destroy",
+          "params": "User $user"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Admin\\Users"
+    },
+    {
+      "name": "AuthenticatedSessionController",
+      "methods": [
+        {
+          "name": "create",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "LoginRequest $request"
+        },
+        {
+          "name": "destroy",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Auth"
+    },
+    {
+      "name": "ConfirmablePasswordController",
+      "methods": [
+        {
+          "name": "show",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Auth"
+    },
+    {
+      "name": "EmailVerificationNotificationController",
+      "methods": [
+        {
+          "name": "store",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Auth"
+    },
+    {
+      "name": "EmailVerificationPromptController",
+      "methods": [
+        {
+          "name": "__invoke",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Auth"
+    },
+    {
+      "name": "NewPasswordController",
+      "methods": [
+        {
+          "name": "create",
+          "params": "Request $request"
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Auth"
+    },
+    {
+      "name": "PasswordController",
+      "methods": [
+        {
+          "name": "update",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Auth"
+    },
+    {
+      "name": "PasswordResetLinkController",
+      "methods": [
+        {
+          "name": "create",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Auth"
+    },
+    {
+      "name": "RegisteredUserController",
+      "methods": [
+        {
+          "name": "create",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Auth"
+    },
+    {
+      "name": "VerifyEmailController",
+      "methods": [
+        {
+          "name": "__invoke",
+          "params": "EmailVerificationRequest $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Auth"
+    },
+    {
+      "name": "Controller",
+      "methods": [],
+      "namespace": "App\\Http\\Controllers"
+    },
+    {
+      "name": "ConversationsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": "Request $request"
+        },
+        {
+          "name": "show",
+          "params": "Conversation $conversation"
+        },
+        {
+          "name": "storeProjectChat",
+          "params": "Request $request, Project $project"
+        },
+        {
+          "name": "getOrCreateAdminSupport",
+          "params": ""
+        },
+        {
+          "name": "destroy",
+          "params": "Conversation $conversation"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers"
+    },
+    {
+      "name": "DashboardRedirectController",
+      "methods": [
+        {
+          "name": "redirect",
+          "params": ""
+        }
+      ],
+      "namespace": "App\\Http\\Controllers"
+    },
+    {
+      "name": "MessagesController",
+      "methods": [
+        {
+          "name": "store",
+          "params": "Request $request, Conversation $conversation"
+        },
+        {
+          "name": "markAsRead",
+          "params": "Request $request, Conversation $conversation"
+        },
+        {
+          "name": "loadMore",
+          "params": "Request $request, Conversation $conversation"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers"
+    },
+    {
+      "name": "NotificationController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "markAsRead",
+          "params": "$id"
+        },
+        {
+          "name": "markAllAsRead",
+          "params": ""
+        },
+        {
+          "name": "destroy",
+          "params": "$id"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers"
+    },
+    {
+      "name": "ProfileController",
+      "methods": [
+        {
+          "name": "edit",
+          "params": "Request $request"
+        },
+        {
+          "name": "update",
+          "params": "ProfileUpdateRequest $request, UploadService $upload"
+        },
+        {
+          "name": "destroy",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers"
+    },
+    {
+      "name": "AssignedProjectsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "show",
+          "params": "Project $project"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Student"
+    },
+    {
+      "name": "AvailableProjectsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "show",
+          "params": "Project $project"
+        },
+        {
+          "name": "requestProject",
+          "params": "Request $request, Project $project"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Student"
+    },
+    {
+      "name": "DashboardController",
+      "methods": [
+        {
+          "name": "dashboard",
+          "params": ""
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Student\\Dashboard"
+    },
+    {
+      "name": "ProjectSubmissionsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "destroy",
+          "params": "ProjectSubmission $projectSubmission"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Student"
+    },
+    {
+      "name": "DashboardController",
+      "methods": [
+        {
+          "name": "dashboard",
+          "params": ""
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Supervisor\\Dashboard"
+    },
+    {
+      "name": "StudentsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Supervisor\\Dashboard"
+    },
+    {
+      "name": "DefensesController",
+      "methods": [
+        {
+          "name": "index",
+          "params": "Request $request"
+        },
+        {
+          "name": "show",
+          "params": "Defense $defense"
+        },
+        {
+          "name": "updateStatus",
+          "params": "Request $request, Defense $defense"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Supervisor"
+    },
+    {
+      "name": "ProjectsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "create",
+          "params": ""
+        },
+        {
+          "name": "store",
+          "params": "Request $request"
+        },
+        {
+          "name": "show",
+          "params": "Project $project"
+        },
+        {
+          "name": "edit",
+          "params": "Project $project"
+        },
+        {
+          "name": "update",
+          "params": "Request $request, Project $project"
+        },
+        {
+          "name": "destroy",
+          "params": "Project $project"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Supervisor"
+    },
+    {
+      "name": "ProjectSubmissionsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": ""
+        },
+        {
+          "name": "show",
+          "params": "ProjectSubmission $projectSubmission"
+        },
+        {
+          "name": "updateStatus",
+          "params": "Request $request, ProjectSubmission $projectSubmission"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Supervisor"
+    },
+    {
+      "name": "StudentsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": "Request $request"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Supervisor"
+    },
+    {
+      "name": "SupervisedProjectsController",
+      "methods": [
+        {
+          "name": "index",
+          "params": "Request $request"
+        },
+        {
+          "name": "show",
+          "params": "Project $project"
+        },
+        {
+          "name": "updateType",
+          "params": "Request $request, Project $project"
+        },
+        {
+          "name": "updateSubmissionStatus",
+          "params": "Request $request, ProjectSubmission $projectSubmission"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers\\Supervisor"
+    },
+    {
+      "name": "UploadsController",
+      "methods": [
+        {
+          "name": "filepondUpload",
+          "params": "Request $request"
+        },
+        {
+          "name": "filepondRevert",
+          "params": "Request $request, $filename"
+        },
+        {
+          "name": "filepondRemove",
+          "params": "Request $request, $filename"
+        }
+      ],
+      "namespace": "App\\Http\\Controllers"
+    }
+  ],
+  "services": [],
+  "relationships": [
+    {
+      "sourceModel": "Setting",
+      "relationshipType": "belongsTo",
+      "relationshipName": "currency",
+      "targetModel": "Currency::class"
+    },
+    {
+      "sourceModel": "User",
+      "relationshipType": "hasMany",
+      "relationshipName": "assignments",
+      "targetModel": "ProjectAssignment::class"
+    },
+    {
+      "sourceModel": "User",
+      "relationshipType": "hasMany",
+      "relationshipName": "messages",
+      "targetModel": "Message::class"
+    },
+    {
+      "sourceModel": "User",
+      "relationshipType": "belongsToMany",
+      "relationshipName": "conversations",
+      "targetModel": "Conversation::class"
+    }
+  ],
+  "directories": {
+    ".": {
+      "models": [
+        "Conversation",
+        "ConversationParticipant",
+        "Currency",
+        "Defense",
+        "Department",
+        "Message",
+        "MessageRead",
+        "PaymentMethod",
+        "Project",
+        "ProjectAssignment",
+        "ProjectRequest",
+        "ProjectSubmission",
+        "Setting",
+        "Specialization",
+        "Upload",
+        "User"
+      ],
+      "controllers": [
+        "ActivityLogsController",
+        "DashboardController",
+        "ProjectRequestsController",
+        "AssignmentsController",
+        "DefensesController",
+        "DepartmentsController",
+        "ProjectsController",
+        "SpecializationsController",
+        "CurrenciesController",
+        "PaymentMethodsController",
+        "SettingsController",
+        "RolesController",
+        "StudentsController",
+        "SupervisorsController",
+        "UsersController",
+        "AuthenticatedSessionController",
+        "ConfirmablePasswordController",
+        "EmailVerificationNotificationController",
+        "EmailVerificationPromptController",
+        "NewPasswordController",
+        "PasswordController",
+        "PasswordResetLinkController",
+        "RegisteredUserController",
+        "VerifyEmailController",
+        "Controller",
+        "ConversationsController",
+        "DashboardRedirectController",
+        "MessagesController",
+        "NotificationController",
+        "ProfileController",
+        "AssignedProjectsController",
+        "AvailableProjectsController",
+        "DashboardController",
+        "ProjectSubmissionsController",
+        "DashboardController",
+        "StudentsController",
+        "DefensesController",
+        "ProjectsController",
+        "ProjectSubmissionsController",
+        "StudentsController",
+        "SupervisedProjectsController",
+        "UploadsController"
+      ]
+    }
+  }
+}

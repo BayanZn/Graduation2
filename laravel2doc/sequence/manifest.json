@@ -1,0 +1,1813 @@
+{
+  "projectName": "laravel/laravel",
+  "projectVersion": "v12.42.0",
+  "generatedAt": "2025-12-19T17:44:52.192Z",
+  "diagrams": [
+    {
+      "id": "ActivityLogsController-index",
+      "name": "ActivityLogsController::index",
+      "controller": "ActivityLogs",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from ActivityLogsController",
+      "fileName": "ActivityLogsController_index.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.016Z"
+    },
+    {
+      "id": "ActivityLogsController-destroy",
+      "name": "ActivityLogsController::destroy",
+      "controller": "ActivityLogs",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from ActivityLogsController",
+      "fileName": "ActivityLogsController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.019Z"
+    },
+    {
+      "id": "ActivityLogsController-destroyMultiple",
+      "name": "ActivityLogsController::destroyMultiple",
+      "controller": "ActivityLogs",
+      "method": "destroyMultiple",
+      "type": "generic",
+      "description": "Handles destroyMultiple operation in ActivityLogsController",
+      "fileName": "ActivityLogsController_destroyMultiple.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.021Z"
+    },
+    {
+      "id": "DashboardController-dashboard",
+      "name": "DashboardController::dashboard",
+      "controller": "Dashboard",
+      "method": "dashboard",
+      "type": "generic",
+      "description": "Handles dashboard operation in DashboardController",
+      "fileName": "DashboardController_dashboard.md",
+      "models": [
+        "Defense",
+        "Department",
+        "Project",
+        "ProjectAssignment",
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.024Z"
+    },
+    {
+      "id": "ProjectRequestsController-index",
+      "name": "ProjectRequestsController::index",
+      "controller": "ProjectRequests",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from ProjectRequestsController",
+      "fileName": "ProjectRequestsController_index.md",
+      "models": [
+        "Project",
+        "ProjectRequest"
+      ],
+      "timestamp": "2025-12-19T17:44:51.026Z"
+    },
+    {
+      "id": "ProjectRequestsController-show",
+      "name": "ProjectRequestsController::show",
+      "controller": "ProjectRequests",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from ProjectRequestsController",
+      "fileName": "ProjectRequestsController_show.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.028Z"
+    },
+    {
+      "id": "ProjectRequestsController-approve",
+      "name": "ProjectRequestsController::approve",
+      "controller": "ProjectRequests",
+      "method": "approve",
+      "type": "generic",
+      "description": "Handles approve operation in ProjectRequestsController",
+      "fileName": "ProjectRequestsController_approve.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.031Z"
+    },
+    {
+      "id": "ProjectRequestsController-reject",
+      "name": "ProjectRequestsController::reject",
+      "controller": "ProjectRequests",
+      "method": "reject",
+      "type": "generic",
+      "description": "Handles reject operation in ProjectRequestsController",
+      "fileName": "ProjectRequestsController_reject.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.032Z"
+    },
+    {
+      "id": "ProjectRequestsController-resetToPending",
+      "name": "ProjectRequestsController::resetToPending",
+      "controller": "ProjectRequests",
+      "method": "resetToPending",
+      "type": "generic",
+      "description": "Handles resetToPending operation in ProjectRequestsController",
+      "fileName": "ProjectRequestsController_resetToPending.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.034Z"
+    },
+    {
+      "id": "AssignmentsController-index",
+      "name": "AssignmentsController::index",
+      "controller": "Assignments",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from AssignmentsController",
+      "fileName": "AssignmentsController_index.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.035Z"
+    },
+    {
+      "id": "AssignmentsController-create",
+      "name": "AssignmentsController::create",
+      "controller": "Assignments",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in AssignmentsController",
+      "fileName": "AssignmentsController_create.md",
+      "models": [
+        "Project",
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.037Z"
+    },
+    {
+      "id": "AssignmentsController-store",
+      "name": "AssignmentsController::store",
+      "controller": "Assignments",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in AssignmentsController",
+      "fileName": "AssignmentsController_store.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.039Z"
+    },
+    {
+      "id": "AssignmentsController-show",
+      "name": "AssignmentsController::show",
+      "controller": "Assignments",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from AssignmentsController",
+      "fileName": "AssignmentsController_show.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.041Z"
+    },
+    {
+      "id": "AssignmentsController-edit",
+      "name": "AssignmentsController::edit",
+      "controller": "Assignments",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in AssignmentsController",
+      "fileName": "AssignmentsController_edit.md",
+      "models": [
+        "Project",
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.043Z"
+    },
+    {
+      "id": "AssignmentsController-update",
+      "name": "AssignmentsController::update",
+      "controller": "Assignments",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in AssignmentsController",
+      "fileName": "AssignmentsController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.046Z"
+    },
+    {
+      "id": "AssignmentsController-destroy",
+      "name": "AssignmentsController::destroy",
+      "controller": "Assignments",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from AssignmentsController",
+      "fileName": "AssignmentsController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.047Z"
+    },
+    {
+      "id": "AssignmentsController-removeSupervisor",
+      "name": "AssignmentsController::removeSupervisor",
+      "controller": "Assignments",
+      "method": "removeSupervisor",
+      "type": "generic",
+      "description": "Handles removeSupervisor operation in AssignmentsController",
+      "fileName": "AssignmentsController_removeSupervisor.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.050Z"
+    },
+    {
+      "id": "AssignmentsController-removeStudent",
+      "name": "AssignmentsController::removeStudent",
+      "controller": "Assignments",
+      "method": "removeStudent",
+      "type": "generic",
+      "description": "Handles removeStudent operation in AssignmentsController",
+      "fileName": "AssignmentsController_removeStudent.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.052Z"
+    },
+    {
+      "id": "DefensesController-index",
+      "name": "DefensesController::index",
+      "controller": "Defenses",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from DefensesController",
+      "fileName": "DefensesController_index.md",
+      "models": [
+        "Defense"
+      ],
+      "timestamp": "2025-12-19T17:44:51.054Z"
+    },
+    {
+      "id": "DefensesController-create",
+      "name": "DefensesController::create",
+      "controller": "Defenses",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in DefensesController",
+      "fileName": "DefensesController_create.md",
+      "models": [
+        "Project",
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.056Z"
+    },
+    {
+      "id": "DefensesController-store",
+      "name": "DefensesController::store",
+      "controller": "Defenses",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in DefensesController",
+      "fileName": "DefensesController_store.md",
+      "models": [
+        "Defense"
+      ],
+      "timestamp": "2025-12-19T17:44:51.059Z"
+    },
+    {
+      "id": "DefensesController-show",
+      "name": "DefensesController::show",
+      "controller": "Defenses",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from DefensesController",
+      "fileName": "DefensesController_show.md",
+      "models": [
+        "Defense",
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.067Z"
+    },
+    {
+      "id": "DefensesController-edit",
+      "name": "DefensesController::edit",
+      "controller": "Defenses",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in DefensesController",
+      "fileName": "DefensesController_edit.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.071Z"
+    },
+    {
+      "id": "DefensesController-update",
+      "name": "DefensesController::update",
+      "controller": "Defenses",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in DefensesController",
+      "fileName": "DefensesController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.077Z"
+    },
+    {
+      "id": "DefensesController-destroy",
+      "name": "DefensesController::destroy",
+      "controller": "Defenses",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from DefensesController",
+      "fileName": "DefensesController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.080Z"
+    },
+    {
+      "id": "DefensesController-removeMember",
+      "name": "DefensesController::removeMember",
+      "controller": "Defenses",
+      "method": "removeMember",
+      "type": "generic",
+      "description": "Handles removeMember operation in DefensesController",
+      "fileName": "DefensesController_removeMember.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.083Z"
+    },
+    {
+      "id": "DefensesController-updateStatus",
+      "name": "DefensesController::updateStatus",
+      "controller": "Defenses",
+      "method": "updateStatus",
+      "type": "generic",
+      "description": "Handles updateStatus operation in DefensesController",
+      "fileName": "DefensesController_updateStatus.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.086Z"
+    },
+    {
+      "id": "DepartmentsController-index",
+      "name": "DepartmentsController::index",
+      "controller": "Departments",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from DepartmentsController",
+      "fileName": "DepartmentsController_index.md",
+      "models": [
+        "Department"
+      ],
+      "timestamp": "2025-12-19T17:44:51.090Z"
+    },
+    {
+      "id": "DepartmentsController-store",
+      "name": "DepartmentsController::store",
+      "controller": "Departments",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in DepartmentsController",
+      "fileName": "DepartmentsController_store.md",
+      "models": [
+        "Department"
+      ],
+      "timestamp": "2025-12-19T17:44:51.097Z"
+    },
+    {
+      "id": "DepartmentsController-edit",
+      "name": "DepartmentsController::edit",
+      "controller": "Departments",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in DepartmentsController",
+      "fileName": "DepartmentsController_edit.md",
+      "models": [
+        "Department"
+      ],
+      "timestamp": "2025-12-19T17:44:51.099Z"
+    },
+    {
+      "id": "DepartmentsController-update",
+      "name": "DepartmentsController::update",
+      "controller": "Departments",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in DepartmentsController",
+      "fileName": "DepartmentsController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.101Z"
+    },
+    {
+      "id": "DepartmentsController-destroy",
+      "name": "DepartmentsController::destroy",
+      "controller": "Departments",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from DepartmentsController",
+      "fileName": "DepartmentsController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.104Z"
+    },
+    {
+      "id": "DepartmentsController-export",
+      "name": "DepartmentsController::export",
+      "controller": "Departments",
+      "method": "export",
+      "type": "generic",
+      "description": "Handles export operation in DepartmentsController",
+      "fileName": "DepartmentsController_export.md",
+      "models": [
+        "Department"
+      ],
+      "timestamp": "2025-12-19T17:44:51.106Z"
+    },
+    {
+      "id": "DepartmentsController-import",
+      "name": "DepartmentsController::import",
+      "controller": "Departments",
+      "method": "import",
+      "type": "generic",
+      "description": "Handles import operation in DepartmentsController",
+      "fileName": "DepartmentsController_import.md",
+      "models": [
+        "Department"
+      ],
+      "timestamp": "2025-12-19T17:44:51.111Z"
+    },
+    {
+      "id": "ProjectsController-index",
+      "name": "ProjectsController::index",
+      "controller": "Projects",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from ProjectsController",
+      "fileName": "ProjectsController_index.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.113Z"
+    },
+    {
+      "id": "ProjectsController-proposed",
+      "name": "ProjectsController::proposed",
+      "controller": "Projects",
+      "method": "proposed",
+      "type": "generic",
+      "description": "Handles proposed operation in ProjectsController",
+      "fileName": "ProjectsController_proposed.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.115Z"
+    },
+    {
+      "id": "ProjectsController-approved",
+      "name": "ProjectsController::approved",
+      "controller": "Projects",
+      "method": "approved",
+      "type": "generic",
+      "description": "Handles approved operation in ProjectsController",
+      "fileName": "ProjectsController_approved.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.117Z"
+    },
+    {
+      "id": "ProjectsController-declined",
+      "name": "ProjectsController::declined",
+      "controller": "Projects",
+      "method": "declined",
+      "type": "generic",
+      "description": "Handles declined operation in ProjectsController",
+      "fileName": "ProjectsController_declined.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.118Z"
+    },
+    {
+      "id": "ProjectsController-create",
+      "name": "ProjectsController::create",
+      "controller": "Projects",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in ProjectsController",
+      "fileName": "ProjectsController_create.md",
+      "models": [
+        "Department",
+        "Project",
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.121Z"
+    },
+    {
+      "id": "ProjectsController-store",
+      "name": "ProjectsController::store",
+      "controller": "Projects",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in ProjectsController",
+      "fileName": "ProjectsController_store.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.122Z"
+    },
+    {
+      "id": "ProjectsController-show",
+      "name": "ProjectsController::show",
+      "controller": "Projects",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from ProjectsController",
+      "fileName": "ProjectsController_show.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.123Z"
+    },
+    {
+      "id": "ProjectsController-edit",
+      "name": "ProjectsController::edit",
+      "controller": "Projects",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in ProjectsController",
+      "fileName": "ProjectsController_edit.md",
+      "models": [
+        "Department",
+        "Project",
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.125Z"
+    },
+    {
+      "id": "ProjectsController-update",
+      "name": "ProjectsController::update",
+      "controller": "Projects",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in ProjectsController",
+      "fileName": "ProjectsController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.126Z"
+    },
+    {
+      "id": "ProjectsController-updateStatus",
+      "name": "ProjectsController::updateStatus",
+      "controller": "Projects",
+      "method": "updateStatus",
+      "type": "generic",
+      "description": "Handles updateStatus operation in ProjectsController",
+      "fileName": "ProjectsController_updateStatus.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.127Z"
+    },
+    {
+      "id": "ProjectsController-updateType",
+      "name": "ProjectsController::updateType",
+      "controller": "Projects",
+      "method": "updateType",
+      "type": "generic",
+      "description": "Handles updateType operation in ProjectsController",
+      "fileName": "ProjectsController_updateType.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.129Z"
+    },
+    {
+      "id": "ProjectsController-destroy",
+      "name": "ProjectsController::destroy",
+      "controller": "Projects",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from ProjectsController",
+      "fileName": "ProjectsController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.131Z"
+    },
+    {
+      "id": "ProjectsController-export",
+      "name": "ProjectsController::export",
+      "controller": "Projects",
+      "method": "export",
+      "type": "generic",
+      "description": "Handles export operation in ProjectsController",
+      "fileName": "ProjectsController_export.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.133Z"
+    },
+    {
+      "id": "ProjectsController-import",
+      "name": "ProjectsController::import",
+      "controller": "Projects",
+      "method": "import",
+      "type": "generic",
+      "description": "Handles import operation in ProjectsController",
+      "fileName": "ProjectsController_import.md",
+      "models": [
+        "Message",
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.134Z"
+    },
+    {
+      "id": "SpecializationsController-index",
+      "name": "SpecializationsController::index",
+      "controller": "Specializations",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from SpecializationsController",
+      "fileName": "SpecializationsController_index.md",
+      "models": [
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.136Z"
+    },
+    {
+      "id": "SpecializationsController-store",
+      "name": "SpecializationsController::store",
+      "controller": "Specializations",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in SpecializationsController",
+      "fileName": "SpecializationsController_store.md",
+      "models": [
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.137Z"
+    },
+    {
+      "id": "SpecializationsController-edit",
+      "name": "SpecializationsController::edit",
+      "controller": "Specializations",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in SpecializationsController",
+      "fileName": "SpecializationsController_edit.md",
+      "models": [
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.138Z"
+    },
+    {
+      "id": "SpecializationsController-update",
+      "name": "SpecializationsController::update",
+      "controller": "Specializations",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in SpecializationsController",
+      "fileName": "SpecializationsController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.141Z"
+    },
+    {
+      "id": "SpecializationsController-destroy",
+      "name": "SpecializationsController::destroy",
+      "controller": "Specializations",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from SpecializationsController",
+      "fileName": "SpecializationsController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.143Z"
+    },
+    {
+      "id": "SpecializationsController-export",
+      "name": "SpecializationsController::export",
+      "controller": "Specializations",
+      "method": "export",
+      "type": "generic",
+      "description": "Handles export operation in SpecializationsController",
+      "fileName": "SpecializationsController_export.md",
+      "models": [
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.162Z"
+    },
+    {
+      "id": "SpecializationsController-import",
+      "name": "SpecializationsController::import",
+      "controller": "Specializations",
+      "method": "import",
+      "type": "generic",
+      "description": "Handles import operation in SpecializationsController",
+      "fileName": "SpecializationsController_import.md",
+      "models": [
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.165Z"
+    },
+    {
+      "id": "CurrenciesController-index",
+      "name": "CurrenciesController::index",
+      "controller": "Currencies",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from CurrenciesController",
+      "fileName": "CurrenciesController_index.md",
+      "models": [
+        "Currency"
+      ],
+      "timestamp": "2025-12-19T17:44:51.167Z"
+    },
+    {
+      "id": "CurrenciesController-store",
+      "name": "CurrenciesController::store",
+      "controller": "Currencies",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in CurrenciesController",
+      "fileName": "CurrenciesController_store.md",
+      "models": [
+        "Currency"
+      ],
+      "timestamp": "2025-12-19T17:44:51.169Z"
+    },
+    {
+      "id": "CurrenciesController-edit",
+      "name": "CurrenciesController::edit",
+      "controller": "Currencies",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in CurrenciesController",
+      "fileName": "CurrenciesController_edit.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.172Z"
+    },
+    {
+      "id": "CurrenciesController-update",
+      "name": "CurrenciesController::update",
+      "controller": "Currencies",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in CurrenciesController",
+      "fileName": "CurrenciesController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.174Z"
+    },
+    {
+      "id": "CurrenciesController-destroy",
+      "name": "CurrenciesController::destroy",
+      "controller": "Currencies",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from CurrenciesController",
+      "fileName": "CurrenciesController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.175Z"
+    },
+    {
+      "id": "PaymentMethodsController-index",
+      "name": "PaymentMethodsController::index",
+      "controller": "PaymentMethods",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from PaymentMethodsController",
+      "fileName": "PaymentMethodsController_index.md",
+      "models": [
+        "PaymentMethod"
+      ],
+      "timestamp": "2025-12-19T17:44:51.178Z"
+    },
+    {
+      "id": "PaymentMethodsController-store",
+      "name": "PaymentMethodsController::store",
+      "controller": "PaymentMethods",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in PaymentMethodsController",
+      "fileName": "PaymentMethodsController_store.md",
+      "models": [
+        "PaymentMethod"
+      ],
+      "timestamp": "2025-12-19T17:44:51.179Z"
+    },
+    {
+      "id": "PaymentMethodsController-edit",
+      "name": "PaymentMethodsController::edit",
+      "controller": "PaymentMethods",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in PaymentMethodsController",
+      "fileName": "PaymentMethodsController_edit.md",
+      "models": [
+        "PaymentMethod"
+      ],
+      "timestamp": "2025-12-19T17:44:51.181Z"
+    },
+    {
+      "id": "PaymentMethodsController-update",
+      "name": "PaymentMethodsController::update",
+      "controller": "PaymentMethods",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in PaymentMethodsController",
+      "fileName": "PaymentMethodsController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.183Z"
+    },
+    {
+      "id": "PaymentMethodsController-destroy",
+      "name": "PaymentMethodsController::destroy",
+      "controller": "PaymentMethods",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from PaymentMethodsController",
+      "fileName": "PaymentMethodsController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.183Z"
+    },
+    {
+      "id": "SettingsController-edit",
+      "name": "SettingsController::edit",
+      "controller": "Settings",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in SettingsController",
+      "fileName": "SettingsController_edit.md",
+      "models": [
+        "Currency",
+        "Setting"
+      ],
+      "timestamp": "2025-12-19T17:44:51.186Z"
+    },
+    {
+      "id": "SettingsController-update",
+      "name": "SettingsController::update",
+      "controller": "Settings",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in SettingsController",
+      "fileName": "SettingsController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.188Z"
+    },
+    {
+      "id": "RolesController-index",
+      "name": "RolesController::index",
+      "controller": "Roles",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from RolesController",
+      "fileName": "RolesController_index.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.189Z"
+    },
+    {
+      "id": "RolesController-create",
+      "name": "RolesController::create",
+      "controller": "Roles",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in RolesController",
+      "fileName": "RolesController_create.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.190Z"
+    },
+    {
+      "id": "RolesController-store",
+      "name": "RolesController::store",
+      "controller": "Roles",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in RolesController",
+      "fileName": "RolesController_store.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.191Z"
+    },
+    {
+      "id": "RolesController-edit",
+      "name": "RolesController::edit",
+      "controller": "Roles",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in RolesController",
+      "fileName": "RolesController_edit.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.195Z"
+    },
+    {
+      "id": "RolesController-update",
+      "name": "RolesController::update",
+      "controller": "Roles",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in RolesController",
+      "fileName": "RolesController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.197Z"
+    },
+    {
+      "id": "RolesController-destroy",
+      "name": "RolesController::destroy",
+      "controller": "Roles",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from RolesController",
+      "fileName": "RolesController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.200Z"
+    },
+    {
+      "id": "StudentsController-index",
+      "name": "StudentsController::index",
+      "controller": "Students",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from StudentsController",
+      "fileName": "StudentsController_index.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.201Z"
+    },
+    {
+      "id": "SupervisorsController-index",
+      "name": "SupervisorsController::index",
+      "controller": "Supervisors",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from SupervisorsController",
+      "fileName": "SupervisorsController_index.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.203Z"
+    },
+    {
+      "id": "UsersController-index",
+      "name": "UsersController::index",
+      "controller": "Users",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from UsersController",
+      "fileName": "UsersController_index.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.205Z"
+    },
+    {
+      "id": "UsersController-create",
+      "name": "UsersController::create",
+      "controller": "Users",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in UsersController",
+      "fileName": "UsersController_create.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.207Z"
+    },
+    {
+      "id": "UsersController-store",
+      "name": "UsersController::store",
+      "controller": "Users",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in UsersController",
+      "fileName": "UsersController_store.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.208Z"
+    },
+    {
+      "id": "UsersController-edit",
+      "name": "UsersController::edit",
+      "controller": "Users",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in UsersController",
+      "fileName": "UsersController_edit.md",
+      "models": [
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.209Z"
+    },
+    {
+      "id": "UsersController-update",
+      "name": "UsersController::update",
+      "controller": "Users",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in UsersController",
+      "fileName": "UsersController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.211Z"
+    },
+    {
+      "id": "UsersController-destroy",
+      "name": "UsersController::destroy",
+      "controller": "Users",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from UsersController",
+      "fileName": "UsersController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.212Z"
+    },
+    {
+      "id": "AuthenticatedSessionController-create",
+      "name": "AuthenticatedSessionController::create",
+      "controller": "AuthenticatedSession",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in AuthenticatedSessionController",
+      "fileName": "AuthenticatedSessionController_create.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.215Z"
+    },
+    {
+      "id": "AuthenticatedSessionController-store",
+      "name": "AuthenticatedSessionController::store",
+      "controller": "AuthenticatedSession",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in AuthenticatedSessionController",
+      "fileName": "AuthenticatedSessionController_store.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.217Z"
+    },
+    {
+      "id": "AuthenticatedSessionController-destroy",
+      "name": "AuthenticatedSessionController::destroy",
+      "controller": "AuthenticatedSession",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from AuthenticatedSessionController",
+      "fileName": "AuthenticatedSessionController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.220Z"
+    },
+    {
+      "id": "ConfirmablePasswordController-show",
+      "name": "ConfirmablePasswordController::show",
+      "controller": "ConfirmablePassword",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from ConfirmablePasswordController",
+      "fileName": "ConfirmablePasswordController_show.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.221Z"
+    },
+    {
+      "id": "ConfirmablePasswordController-store",
+      "name": "ConfirmablePasswordController::store",
+      "controller": "ConfirmablePassword",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in ConfirmablePasswordController",
+      "fileName": "ConfirmablePasswordController_store.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.223Z"
+    },
+    {
+      "id": "EmailVerificationNotificationController-store",
+      "name": "EmailVerificationNotificationController::store",
+      "controller": "EmailVerificationNotification",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in EmailVerificationNotificationController",
+      "fileName": "EmailVerificationNotificationController_store.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.225Z"
+    },
+    {
+      "id": "EmailVerificationPromptController-__invoke",
+      "name": "EmailVerificationPromptController::__invoke",
+      "controller": "EmailVerificationPrompt",
+      "method": "__invoke",
+      "type": "generic",
+      "description": "Handles __invoke operation in EmailVerificationPromptController",
+      "fileName": "EmailVerificationPromptController___invoke.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.233Z"
+    },
+    {
+      "id": "NewPasswordController-create",
+      "name": "NewPasswordController::create",
+      "controller": "NewPassword",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in NewPasswordController",
+      "fileName": "NewPasswordController_create.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.235Z"
+    },
+    {
+      "id": "NewPasswordController-store",
+      "name": "NewPasswordController::store",
+      "controller": "NewPassword",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in NewPasswordController",
+      "fileName": "NewPasswordController_store.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.237Z"
+    },
+    {
+      "id": "PasswordController-update",
+      "name": "PasswordController::update",
+      "controller": "Password",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in PasswordController",
+      "fileName": "PasswordController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.243Z"
+    },
+    {
+      "id": "PasswordResetLinkController-create",
+      "name": "PasswordResetLinkController::create",
+      "controller": "PasswordResetLink",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in PasswordResetLinkController",
+      "fileName": "PasswordResetLinkController_create.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.245Z"
+    },
+    {
+      "id": "PasswordResetLinkController-store",
+      "name": "PasswordResetLinkController::store",
+      "controller": "PasswordResetLink",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in PasswordResetLinkController",
+      "fileName": "PasswordResetLinkController_store.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.248Z"
+    },
+    {
+      "id": "RegisteredUserController-create",
+      "name": "RegisteredUserController::create",
+      "controller": "RegisteredUser",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in RegisteredUserController",
+      "fileName": "RegisteredUserController_create.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.251Z"
+    },
+    {
+      "id": "RegisteredUserController-store",
+      "name": "RegisteredUserController::store",
+      "controller": "RegisteredUser",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in RegisteredUserController",
+      "fileName": "RegisteredUserController_store.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.254Z"
+    },
+    {
+      "id": "VerifyEmailController-__invoke",
+      "name": "VerifyEmailController::__invoke",
+      "controller": "VerifyEmail",
+      "method": "__invoke",
+      "type": "generic",
+      "description": "Handles __invoke operation in VerifyEmailController",
+      "fileName": "VerifyEmailController___invoke.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.257Z"
+    },
+    {
+      "id": "ConversationsController-index",
+      "name": "ConversationsController::index",
+      "controller": "Conversations",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from ConversationsController",
+      "fileName": "ConversationsController_index.md",
+      "models": [
+        "Message"
+      ],
+      "timestamp": "2025-12-19T17:44:51.259Z"
+    },
+    {
+      "id": "ConversationsController-show",
+      "name": "ConversationsController::show",
+      "controller": "Conversations",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from ConversationsController",
+      "fileName": "ConversationsController_show.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.261Z"
+    },
+    {
+      "id": "ConversationsController-storeProjectChat",
+      "name": "ConversationsController::storeProjectChat",
+      "controller": "Conversations",
+      "method": "storeProjectChat",
+      "type": "generic",
+      "description": "Handles storeProjectChat operation in ConversationsController",
+      "fileName": "ConversationsController_storeProjectChat.md",
+      "models": [
+        "Conversation"
+      ],
+      "timestamp": "2025-12-19T17:44:51.264Z"
+    },
+    {
+      "id": "ConversationsController-getOrCreateAdminSupport",
+      "name": "ConversationsController::getOrCreateAdminSupport",
+      "controller": "Conversations",
+      "method": "getOrCreateAdminSupport",
+      "type": "generic",
+      "description": "Handles getOrCreateAdminSupport operation in ConversationsController",
+      "fileName": "ConversationsController_getOrCreateAdminSupport.md",
+      "models": [
+        "Conversation"
+      ],
+      "timestamp": "2025-12-19T17:44:51.270Z"
+    },
+    {
+      "id": "ConversationsController-destroy",
+      "name": "ConversationsController::destroy",
+      "controller": "Conversations",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from ConversationsController",
+      "fileName": "ConversationsController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.274Z"
+    },
+    {
+      "id": "DashboardRedirectController-redirect",
+      "name": "DashboardRedirectController::redirect",
+      "controller": "DashboardRedirect",
+      "method": "redirect",
+      "type": "generic",
+      "description": "Handles redirect operation in DashboardRedirectController",
+      "fileName": "DashboardRedirectController_redirect.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.276Z"
+    },
+    {
+      "id": "MessagesController-store",
+      "name": "MessagesController::store",
+      "controller": "Messages",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in MessagesController",
+      "fileName": "MessagesController_store.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.279Z"
+    },
+    {
+      "id": "MessagesController-markAsRead",
+      "name": "MessagesController::markAsRead",
+      "controller": "Messages",
+      "method": "markAsRead",
+      "type": "generic",
+      "description": "Handles markAsRead operation in MessagesController",
+      "fileName": "MessagesController_markAsRead.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.282Z"
+    },
+    {
+      "id": "MessagesController-loadMore",
+      "name": "MessagesController::loadMore",
+      "controller": "Messages",
+      "method": "loadMore",
+      "type": "generic",
+      "description": "Handles loadMore operation in MessagesController",
+      "fileName": "MessagesController_loadMore.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.286Z"
+    },
+    {
+      "id": "NotificationController-index",
+      "name": "NotificationController::index",
+      "controller": "Notification",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from NotificationController",
+      "fileName": "NotificationController_index.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.292Z"
+    },
+    {
+      "id": "NotificationController-markAsRead",
+      "name": "NotificationController::markAsRead",
+      "controller": "Notification",
+      "method": "markAsRead",
+      "type": "generic",
+      "description": "Handles markAsRead operation in NotificationController",
+      "fileName": "NotificationController_markAsRead.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.294Z"
+    },
+    {
+      "id": "NotificationController-markAllAsRead",
+      "name": "NotificationController::markAllAsRead",
+      "controller": "Notification",
+      "method": "markAllAsRead",
+      "type": "generic",
+      "description": "Handles markAllAsRead operation in NotificationController",
+      "fileName": "NotificationController_markAllAsRead.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.297Z"
+    },
+    {
+      "id": "NotificationController-destroy",
+      "name": "NotificationController::destroy",
+      "controller": "Notification",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from NotificationController",
+      "fileName": "NotificationController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.300Z"
+    },
+    {
+      "id": "ProfileController-edit",
+      "name": "ProfileController::edit",
+      "controller": "Profile",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in ProfileController",
+      "fileName": "ProfileController_edit.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.302Z"
+    },
+    {
+      "id": "ProfileController-update",
+      "name": "ProfileController::update",
+      "controller": "Profile",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in ProfileController",
+      "fileName": "ProfileController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.307Z"
+    },
+    {
+      "id": "ProfileController-destroy",
+      "name": "ProfileController::destroy",
+      "controller": "Profile",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from ProfileController",
+      "fileName": "ProfileController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.310Z"
+    },
+    {
+      "id": "AssignedProjectsController-index",
+      "name": "AssignedProjectsController::index",
+      "controller": "AssignedProjects",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from AssignedProjectsController",
+      "fileName": "AssignedProjectsController_index.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.311Z"
+    },
+    {
+      "id": "AssignedProjectsController-show",
+      "name": "AssignedProjectsController::show",
+      "controller": "AssignedProjects",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from AssignedProjectsController",
+      "fileName": "AssignedProjectsController_show.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.315Z"
+    },
+    {
+      "id": "AvailableProjectsController-index",
+      "name": "AvailableProjectsController::index",
+      "controller": "AvailableProjects",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from AvailableProjectsController",
+      "fileName": "AvailableProjectsController_index.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.318Z"
+    },
+    {
+      "id": "AvailableProjectsController-show",
+      "name": "AvailableProjectsController::show",
+      "controller": "AvailableProjects",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from AvailableProjectsController",
+      "fileName": "AvailableProjectsController_show.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.324Z"
+    },
+    {
+      "id": "AvailableProjectsController-requestProject",
+      "name": "AvailableProjectsController::requestProject",
+      "controller": "AvailableProjects",
+      "method": "requestProject",
+      "type": "generic",
+      "description": "Handles requestProject operation in AvailableProjectsController",
+      "fileName": "AvailableProjectsController_requestProject.md",
+      "models": [
+        "Project",
+        "ProjectRequest"
+      ],
+      "timestamp": "2025-12-19T17:44:51.329Z"
+    },
+    {
+      "id": "DashboardController-dashboard",
+      "name": "DashboardController::dashboard",
+      "controller": "Dashboard",
+      "method": "dashboard",
+      "type": "generic",
+      "description": "Handles dashboard operation in DashboardController",
+      "fileName": "DashboardController_dashboard.md",
+      "models": [
+        "Defense",
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.331Z"
+    },
+    {
+      "id": "ProjectSubmissionsController-index",
+      "name": "ProjectSubmissionsController::index",
+      "controller": "ProjectSubmissions",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from ProjectSubmissionsController",
+      "fileName": "ProjectSubmissionsController_index.md",
+      "models": [
+        "Project",
+        "ProjectAssignment",
+        "ProjectSubmission"
+      ],
+      "timestamp": "2025-12-19T17:44:51.335Z"
+    },
+    {
+      "id": "ProjectSubmissionsController-store",
+      "name": "ProjectSubmissionsController::store",
+      "controller": "ProjectSubmissions",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in ProjectSubmissionsController",
+      "fileName": "ProjectSubmissionsController_store.md",
+      "models": [
+        "Project",
+        "ProjectAssignment"
+      ],
+      "timestamp": "2025-12-19T17:44:51.337Z"
+    },
+    {
+      "id": "ProjectSubmissionsController-destroy",
+      "name": "ProjectSubmissionsController::destroy",
+      "controller": "ProjectSubmissions",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from ProjectSubmissionsController",
+      "fileName": "ProjectSubmissionsController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.341Z"
+    },
+    {
+      "id": "DashboardController-dashboard",
+      "name": "DashboardController::dashboard",
+      "controller": "Dashboard",
+      "method": "dashboard",
+      "type": "generic",
+      "description": "Handles dashboard operation in DashboardController",
+      "fileName": "DashboardController_dashboard.md",
+      "models": [
+        "Defense",
+        "Project",
+        "ProjectAssignment"
+      ],
+      "timestamp": "2025-12-19T17:44:51.343Z"
+    },
+    {
+      "id": "StudentsController-index",
+      "name": "StudentsController::index",
+      "controller": "Students",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from StudentsController",
+      "fileName": "StudentsController_index.md",
+      "models": [
+        "Project",
+        "ProjectAssignment",
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.344Z"
+    },
+    {
+      "id": "DefensesController-index",
+      "name": "DefensesController::index",
+      "controller": "Defenses",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from DefensesController",
+      "fileName": "DefensesController_index.md",
+      "models": [
+        "Defense"
+      ],
+      "timestamp": "2025-12-19T17:44:51.347Z"
+    },
+    {
+      "id": "DefensesController-show",
+      "name": "DefensesController::show",
+      "controller": "Defenses",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from DefensesController",
+      "fileName": "DefensesController_show.md",
+      "models": [
+        "Defense"
+      ],
+      "timestamp": "2025-12-19T17:44:51.349Z"
+    },
+    {
+      "id": "DefensesController-updateStatus",
+      "name": "DefensesController::updateStatus",
+      "controller": "Defenses",
+      "method": "updateStatus",
+      "type": "generic",
+      "description": "Handles updateStatus operation in DefensesController",
+      "fileName": "DefensesController_updateStatus.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.351Z"
+    },
+    {
+      "id": "ProjectsController-index",
+      "name": "ProjectsController::index",
+      "controller": "Projects",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from ProjectsController",
+      "fileName": "ProjectsController_index.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.354Z"
+    },
+    {
+      "id": "ProjectsController-create",
+      "name": "ProjectsController::create",
+      "controller": "Projects",
+      "method": "create",
+      "type": "create",
+      "description": "Creates a new resource in ProjectsController",
+      "fileName": "ProjectsController_create.md",
+      "models": [
+        "Department",
+        "Project",
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.355Z"
+    },
+    {
+      "id": "ProjectsController-store",
+      "name": "ProjectsController::store",
+      "controller": "Projects",
+      "method": "store",
+      "type": "create",
+      "description": "Creates a new resource in ProjectsController",
+      "fileName": "ProjectsController_store.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.356Z"
+    },
+    {
+      "id": "ProjectsController-show",
+      "name": "ProjectsController::show",
+      "controller": "Projects",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from ProjectsController",
+      "fileName": "ProjectsController_show.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.358Z"
+    },
+    {
+      "id": "ProjectsController-edit",
+      "name": "ProjectsController::edit",
+      "controller": "Projects",
+      "method": "edit",
+      "type": "update",
+      "description": "Updates an existing resource in ProjectsController",
+      "fileName": "ProjectsController_edit.md",
+      "models": [
+        "Department",
+        "Project",
+        "Specialization"
+      ],
+      "timestamp": "2025-12-19T17:44:51.359Z"
+    },
+    {
+      "id": "ProjectsController-update",
+      "name": "ProjectsController::update",
+      "controller": "Projects",
+      "method": "update",
+      "type": "update",
+      "description": "Updates an existing resource in ProjectsController",
+      "fileName": "ProjectsController_update.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.360Z"
+    },
+    {
+      "id": "ProjectsController-destroy",
+      "name": "ProjectsController::destroy",
+      "controller": "Projects",
+      "method": "destroy",
+      "type": "delete",
+      "description": "Removes a resource from ProjectsController",
+      "fileName": "ProjectsController_destroy.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.361Z"
+    },
+    {
+      "id": "ProjectSubmissionsController-index",
+      "name": "ProjectSubmissionsController::index",
+      "controller": "ProjectSubmissions",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from ProjectSubmissionsController",
+      "fileName": "ProjectSubmissionsController_index.md",
+      "models": [
+        "Project",
+        "ProjectAssignment",
+        "ProjectSubmission"
+      ],
+      "timestamp": "2025-12-19T17:44:51.362Z"
+    },
+    {
+      "id": "ProjectSubmissionsController-show",
+      "name": "ProjectSubmissionsController::show",
+      "controller": "ProjectSubmissions",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from ProjectSubmissionsController",
+      "fileName": "ProjectSubmissionsController_show.md",
+      "models": [
+        "Project",
+        "ProjectAssignment"
+      ],
+      "timestamp": "2025-12-19T17:44:51.381Z"
+    },
+    {
+      "id": "ProjectSubmissionsController-updateStatus",
+      "name": "ProjectSubmissionsController::updateStatus",
+      "controller": "ProjectSubmissions",
+      "method": "updateStatus",
+      "type": "generic",
+      "description": "Handles updateStatus operation in ProjectSubmissionsController",
+      "fileName": "ProjectSubmissionsController_updateStatus.md",
+      "models": [
+        "Project",
+        "ProjectAssignment"
+      ],
+      "timestamp": "2025-12-19T17:44:51.387Z"
+    },
+    {
+      "id": "StudentsController-index",
+      "name": "StudentsController::index",
+      "controller": "Students",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from StudentsController",
+      "fileName": "StudentsController_index.md",
+      "models": [
+        "Project",
+        "ProjectAssignment",
+        "User"
+      ],
+      "timestamp": "2025-12-19T17:44:51.403Z"
+    },
+    {
+      "id": "SupervisedProjectsController-index",
+      "name": "SupervisedProjectsController::index",
+      "controller": "SupervisedProjects",
+      "method": "index",
+      "type": "list",
+      "description": "Retrieves a collection of resources from SupervisedProjectsController",
+      "fileName": "SupervisedProjectsController_index.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.406Z"
+    },
+    {
+      "id": "SupervisedProjectsController-show",
+      "name": "SupervisedProjectsController::show",
+      "controller": "SupervisedProjects",
+      "method": "show",
+      "type": "show",
+      "description": "Retrieves a specific resource from SupervisedProjectsController",
+      "fileName": "SupervisedProjectsController_show.md",
+      "models": [
+        "Project"
+      ],
+      "timestamp": "2025-12-19T17:44:51.415Z"
+    },
+    {
+      "id": "SupervisedProjectsController-updateType",
+      "name": "SupervisedProjectsController::updateType",
+      "controller": "SupervisedProjects",
+      "method": "updateType",
+      "type": "generic",
+      "description": "Handles updateType operation in SupervisedProjectsController",
+      "fileName": "SupervisedProjectsController_updateType.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.419Z"
+    },
+    {
+      "id": "SupervisedProjectsController-updateSubmissionStatus",
+      "name": "SupervisedProjectsController::updateSubmissionStatus",
+      "controller": "SupervisedProjects",
+      "method": "updateSubmissionStatus",
+      "type": "generic",
+      "description": "Handles updateSubmissionStatus operation in SupervisedProjectsController",
+      "fileName": "SupervisedProjectsController_updateSubmissionStatus.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.433Z"
+    },
+    {
+      "id": "UploadsController-filepondUpload",
+      "name": "UploadsController::filepondUpload",
+      "controller": "Uploads",
+      "method": "filepondUpload",
+      "type": "generic",
+      "description": "Handles filepondUpload operation in UploadsController",
+      "fileName": "UploadsController_filepondUpload.md",
+      "models": [
+        "Upload"
+      ],
+      "timestamp": "2025-12-19T17:44:51.448Z"
+    },
+    {
+      "id": "UploadsController-filepondRevert",
+      "name": "UploadsController::filepondRevert",
+      "controller": "Uploads",
+      "method": "filepondRevert",
+      "type": "generic",
+      "description": "Handles filepondRevert operation in UploadsController",
+      "fileName": "UploadsController_filepondRevert.md",
+      "models": [
+        "Upload"
+      ],
+      "timestamp": "2025-12-19T17:44:51.463Z"
+    },
+    {
+      "id": "UploadsController-filepondRemove",
+      "name": "UploadsController::filepondRemove",
+      "controller": "Uploads",
+      "method": "filepondRemove",
+      "type": "generic",
+      "description": "Handles filepondRemove operation in UploadsController",
+      "fileName": "UploadsController_filepondRemove.md",
+      "models": [],
+      "timestamp": "2025-12-19T17:44:51.466Z"
+    }
+  ],
+  "statistics": {
+    "totalDiagrams": 144,
+    "byType": {
+      "list": 24,
+      "delete": 16,
+      "generic": 39,
+      "show": 12,
+      "create": 28,
+      "update": 25
+    },
+    "byController": {
+      "ActivityLogs": 3,
+      "Dashboard": 1,
+      "ProjectRequests": 5,
+      "Assignments": 9,
+      "Defenses": 3,
+      "Departments": 7,
+      "Projects": 7,
+      "Specializations": 7,
+      "Currencies": 5,
+      "PaymentMethods": 5,
+      "Settings": 2,
+      "Roles": 6,
+      "Students": 1,
+      "Supervisors": 1,
+      "Users": 6,
+      "AuthenticatedSession": 3,
+      "ConfirmablePassword": 2,
+      "EmailVerificationNotification": 1,
+      "EmailVerificationPrompt": 1,
+      "NewPassword": 2,
+      "Password": 1,
+      "PasswordResetLink": 2,
+      "RegisteredUser": 2,
+      "VerifyEmail": 1,
+      "": 0,
+      "Conversations": 5,
+      "DashboardRedirect": 1,
+      "Messages": 3,
+      "Notification": 4,
+      "Profile": 3,
+      "AssignedProjects": 2,
+      "AvailableProjects": 3,
+      "ProjectSubmissions": 3,
+      "SupervisedProjects": 4,
+      "Uploads": 3
+    }
+  }
+}

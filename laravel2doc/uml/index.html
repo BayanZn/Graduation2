@@ -1,0 +1,695 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive UML Diagrams - laravel/laravel</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    :root {
+      --primary-color: #3490dc;
+      --secondary-color: #2d3748;
+      --bg-color: #f8fafc;
+      --panel-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --text-color: #333;
+      --text-muted: #718096;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary-color: #4299e1;
+        --secondary-color: #a0aec0;
+        --bg-color: #1a202c;
+        --panel-bg: #2d3748;
+        --border-color: #4a5568;
+        --text-color: #f7fafc;
+        --text-muted: #cbd5e0;
+      }
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      background-color: var(--bg-color);
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s ease;
+    }
+    
+    .container {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      grid-template-rows: auto 1fr;
+      grid-template-areas:
+        "header header"
+        "sidebar content";
+      height: 100vh;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "header"
+          "sidebar"
+          "content";
+      }
+      
+      .sidebar {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+    }
+    
+    header {
+      grid-area: header;
+      background: var(--primary-color);
+      color: white;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header-title {
+      margin: 0;
+    }
+    
+    .header-controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    
+    .theme-toggle {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
+    
+    .sidebar {
+      grid-area: sidebar;
+      background: var(--panel-bg);
+      border-right: 1px solid var(--border-color);
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    
+    .content {
+      grid-area: content;
+      padding: 1rem;
+      overflow: auto;
+    }
+    
+    .filter-section {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+    
+    .filter-section h3 {
+      margin-top: 0;
+      color: var(--primary-color);
+    }
+    
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    input[type="checkbox"] {
+      cursor: pointer;
+    }
+    
+    label {
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    select {
+      width: 100%;
+      padding: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background-color: var(--panel-bg);
+      color: var(--text-color);
+    }
+    
+    .button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: background-color 0.2s ease;
+    }
+    
+    .button:hover {
+      background-color: #2779bd;
+    }
+    
+    .diagram-container {
+      background: var(--panel-bg);
+      border-radius: 5px;
+      overflow: auto;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+      height: 100%;
+      position: relative;
+    }
+    
+    .diagram-controls {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 10;
+    }
+    
+    .zoom-button {
+      background-color: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: bold;
+      user-select: none;
+    }
+    
+    .zoom-button:hover {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    .mermaid {
+      font-size: 14px;
+      padding: 1rem;
+    }
+    
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      font-size: 1.2rem;
+      color: var(--text-muted);
+    }
+    
+    .entity-count {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+    }
+.navbar {
+  background-color: #2c3e50;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 2rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.navbar-title {
+  font-size: 1.6rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.navbar-links a {
+  color: white;
+  text-decoration: none;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  transition: background 0.3s, color 0.3s;
+}
+
+.navbar-links a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #1abc9c;
+}
+
+.github-link {
+  background-color: #b43355;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.github-link:hover {
+  background-color: #bdc3c7;
+  color: #2c3e50;
+}
+
+    
+    .search-box {
+      width: 100%;
+      padding: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+      background-color: var(--panel-bg);
+      color: var(--text-color);
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+<!-- Add Font Awesome CDN if not already included -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+<div class="navbar">
+  <div class="navbar-title">
+    <i class="fas fa-code-branch"></i> Laravel2Doc
+  </div>
+  <div class="navbar-links">
+    <a href="https://laravel2doc.netlify.app/"><i class="fas fa-house"></i> Home</a>
+    <a href="../erd/"><i class="fas fa-project-diagram"></i> ERD</a>
+    <a href="../uml/"><i class="fas fa-sitemap"></i> UML</a>
+    <a href="../sequence/"><i class="fas fa-stream"></i> Sequence</a>
+    <a href="../api/"><i class="fas fa-plug"></i> API</a>
+    <a href="https://github.com/Priom7/laravel2doc" target="_blank" class="github-link">
+      <i class="fab fa-github"></i> GitHub
+    </a>
+  </div>
+</div>
+
+  <div class="container">
+    <header>
+      <div>
+        <h1 class="header-title">UML Explorer</h1>
+        <h2 class="header-subtitle">laravel/laravel (Laravel v12.42.0)</h2>
+      </div>
+      <div class="header-controls">
+        <button id="export-png" class="button">Export PNG</button>
+        <button id="theme-toggle" class="theme-toggle">🌙</button>
+      </div>
+    </header>
+    
+    <div class="sidebar">
+      <input type="text" id="search-box" class="search-box" placeholder="Search entities...">
+      
+      <div class="filter-section">
+        <h3>Entity Types</h3>
+        <div class="checkbox-group" id="entity-types">
+          <div class="checkbox-item">
+            <input type="checkbox" id="models-checkbox" checked>
+            <label for="models-checkbox">Models <span class="entity-count">(16)</span></label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="controllers-checkbox">
+            <label for="controllers-checkbox">Controllers <span class="entity-count">(42)</span></label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="services-checkbox">
+            <label for="services-checkbox">Services <span class="entity-count">(0)</span></label>
+          </div>
+        </div>
+      </div>
+      
+      <div class="filter-section">
+        <h3>Filter by Directory</h3>
+        <select id="directory-select">
+          <option value="">All Directories</option>
+          <option value=".">.</option>
+        </select>
+      </div>
+      
+      <div class="filter-section">
+        <h3>Detail Level</h3>
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            <input type="checkbox" id="show-properties" checked>
+            <label for="show-properties">Show Properties</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="show-methods" checked>
+            <label for="show-methods">Show Methods</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="show-relationships" checked>
+            <label for="show-relationships">Show Relationships</label>
+          </div>
+        </div>
+      </div>
+      
+      <button id="apply-filters" class="button">Apply Filters</button>
+    </div>
+    
+    <div class="content">
+      <div class="diagram-container">
+        <div class="diagram-controls">
+          <div class="zoom-button" id="zoom-in">+</div>
+          <div class="zoom-button" id="zoom-out">-</div>
+          <div class="zoom-button" id="zoom-reset">↺</div>
+        </div>
+        <div id="diagram" class="mermaid"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Initialize mermaid
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default',
+      securityLevel: 'loose',
+      flowchart: {
+        useMaxWidth: false
+      }
+    });
+    
+    // Store the diagram data
+    const diagramData = {"models":[{"name":"Conversation","properties":[{"name":"type","type":"fillable","dataType":""},{"name":"project_id","type":"fillable","dataType":""},{"name":"name","type":"fillable","dataType":""},{"name":"last_message_at","type":"fillable","dataType":"datetime"},{"name":"created_by","type":"fillable","dataType":""}],"methods":[],"namespace":"App\\Models"},{"name":"ConversationParticipant","properties":[{"name":"conversation_id","type":"fillable","dataType":""},{"name":"user_id","type":"fillable","dataType":""},{"name":"role","type":"fillable","dataType":""},{"name":"unread_count","type":"fillable","dataType":""},{"name":"last_read_at","type":"fillable","dataType":"datetime"},{"name":"joined_at","type":"fillable","dataType":"datetime"}],"methods":[],"namespace":"App\\Models"},{"name":"Currency","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"Defense","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"Department","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"Message","properties":[{"name":"conversation_id","type":"fillable","dataType":""},{"name":"sender_id","type":"fillable","dataType":""},{"name":"message","type":"fillable","dataType":""},{"name":"type","type":"fillable","dataType":""},{"name":"read_at","type":"fillable","dataType":"datetime"}],"methods":[],"namespace":"App\\Models"},{"name":"MessageRead","properties":[{"name":"message_id","type":"fillable","dataType":""},{"name":"user_id","type":"fillable","dataType":""},{"name":"read_at","type":"fillable","dataType":"datetime"}],"methods":[],"namespace":"App\\Models"},{"name":"PaymentMethod","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"Project","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"ProjectAssignment","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"ProjectRequest","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"ProjectSubmission","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"Setting","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"Specialization","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"Upload","properties":[],"methods":[],"namespace":"App\\Models"},{"name":"User","properties":[{"name":"name","type":"fillable","dataType":""},{"name":"email","type":"fillable","dataType":""},{"name":"password","type":"fillable","dataType":"hashed"},{"name":"mobile","type":"fillable","dataType":""},{"name":"address","type":"fillable","dataType":""},{"name":"gender","type":"fillable","dataType":""},{"name":"first_name","type":"fillable","dataType":""},{"name":"last_name","type":"fillable","dataType":""},{"name":"date_of_birth","type":"fillable","dataType":""}],"methods":[],"namespace":"App\\Models"}],"controllers":[{"name":"ActivityLogsController","methods":[{"name":"index","params":""},{"name":"destroy","params":"Activity $activity_log"},{"name":"destroyMultiple","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Admin"},{"name":"DashboardController","methods":[{"name":"dashboard","params":""}],"namespace":"App\\Http\\Controllers\\Admin\\Dashboard"},{"name":"ProjectRequestsController","methods":[{"name":"index","params":""},{"name":"show","params":"ProjectRequest $projectRequest"},{"name":"approve","params":"Request $request, ProjectRequest $projectRequest"},{"name":"reject","params":"Request $request, ProjectRequest $projectRequest"},{"name":"resetToPending","params":"ProjectRequest $projectRequest"}],"namespace":"App\\Http\\Controllers\\Admin"},{"name":"AssignmentsController","methods":[{"name":"index","params":""},{"name":"create","params":""},{"name":"store","params":"Request $request"},{"name":"show","params":"Project $project"},{"name":"edit","params":"Project $project"},{"name":"update","params":"Request $request, Project $project"},{"name":"destroy","params":"Project $project"},{"name":"removeSupervisor","params":"Project $project, User $user"},{"name":"removeStudent","params":"Project $project, User $user"}],"namespace":"App\\Http\\Controllers\\Admin\\Projects"},{"name":"DefensesController","methods":[{"name":"index","params":"Request $request"},{"name":"create","params":""},{"name":"store","params":"Request $request"},{"name":"show","params":"Defense $defense"},{"name":"edit","params":"Defense $defense"},{"name":"update","params":"Request $request, Defense $defense"},{"name":"destroy","params":"Defense $defense"},{"name":"removeMember","params":"Defense $defense, User $user"},{"name":"updateStatus","params":"Request $request, Defense $defense"}],"namespace":"App\\Http\\Controllers\\Admin\\Projects"},{"name":"DepartmentsController","methods":[{"name":"index","params":""},{"name":"store","params":"Request $request"},{"name":"edit","params":"string $id"},{"name":"update","params":"Request $request, Department $department"},{"name":"destroy","params":"Department $department"},{"name":"export","params":""},{"name":"import","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Admin\\Projects"},{"name":"ProjectsController","methods":[{"name":"index","params":""},{"name":"proposed","params":""},{"name":"approved","params":""},{"name":"declined","params":""},{"name":"create","params":""},{"name":"store","params":"Request $request"},{"name":"show","params":"Project $project"},{"name":"edit","params":"Project $project"},{"name":"update","params":"Request $request, Project $project"},{"name":"updateStatus","params":"Request $request, Project $project"},{"name":"updateType","params":"Request $request, Project $project"},{"name":"destroy","params":"Project $project"},{"name":"export","params":""},{"name":"import","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Admin\\Projects"},{"name":"SpecializationsController","methods":[{"name":"index","params":""},{"name":"store","params":"Request $request"},{"name":"edit","params":"string $id"},{"name":"update","params":"Request $request, Specialization $specialization"},{"name":"destroy","params":"Specialization $specialization"},{"name":"export","params":""},{"name":"import","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Admin\\Projects"},{"name":"CurrenciesController","methods":[{"name":"index","params":""},{"name":"store","params":"Request $request"},{"name":"edit","params":"Currency $currency"},{"name":"update","params":"Request $request, Currency $currency"},{"name":"destroy","params":"Currency $currency"}],"namespace":"App\\Http\\Controllers\\Admin\\Settings"},{"name":"PaymentMethodsController","methods":[{"name":"index","params":""},{"name":"store","params":"Request $request"},{"name":"edit","params":"string $id"},{"name":"update","params":"Request $request, PaymentMethod $payment_method"},{"name":"destroy","params":"PaymentMethod $payment_method"}],"namespace":"App\\Http\\Controllers\\Admin\\Settings"},{"name":"SettingsController","methods":[{"name":"edit","params":""},{"name":"update","params":"Request $request, Setting $setting"}],"namespace":"App\\Http\\Controllers\\Admin\\Settings"},{"name":"RolesController","methods":[{"name":"index","params":""},{"name":"create","params":""},{"name":"store","params":"Request $request"},{"name":"edit","params":"$id"},{"name":"update","params":"Request $request, Role $role"},{"name":"destroy","params":"Role $role"}],"namespace":"App\\Http\\Controllers\\Admin\\Users"},{"name":"StudentsController","methods":[{"name":"index","params":""}],"namespace":"App\\Http\\Controllers\\Admin\\Users"},{"name":"SupervisorsController","methods":[{"name":"index","params":""}],"namespace":"App\\Http\\Controllers\\Admin\\Users"},{"name":"UsersController","methods":[{"name":"index","params":""},{"name":"create","params":""},{"name":"store","params":"Request $request, UploadService $upload"},{"name":"edit","params":"User $user"},{"name":"update","params":"Request $request, User $user, UploadService $upload"},{"name":"destroy","params":"User $user"}],"namespace":"App\\Http\\Controllers\\Admin\\Users"},{"name":"AuthenticatedSessionController","methods":[{"name":"create","params":""},{"name":"store","params":"LoginRequest $request"},{"name":"destroy","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Auth"},{"name":"ConfirmablePasswordController","methods":[{"name":"show","params":""},{"name":"store","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Auth"},{"name":"EmailVerificationNotificationController","methods":[{"name":"store","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Auth"},{"name":"EmailVerificationPromptController","methods":[{"name":"__invoke","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Auth"},{"name":"NewPasswordController","methods":[{"name":"create","params":"Request $request"},{"name":"store","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Auth"},{"name":"PasswordController","methods":[{"name":"update","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Auth"},{"name":"PasswordResetLinkController","methods":[{"name":"create","params":""},{"name":"store","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Auth"},{"name":"RegisteredUserController","methods":[{"name":"create","params":""},{"name":"store","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Auth"},{"name":"VerifyEmailController","methods":[{"name":"__invoke","params":"EmailVerificationRequest $request"}],"namespace":"App\\Http\\Controllers\\Auth"},{"name":"Controller","methods":[],"namespace":"App\\Http\\Controllers"},{"name":"ConversationsController","methods":[{"name":"index","params":"Request $request"},{"name":"show","params":"Conversation $conversation"},{"name":"storeProjectChat","params":"Request $request, Project $project"},{"name":"getOrCreateAdminSupport","params":""},{"name":"destroy","params":"Conversation $conversation"}],"namespace":"App\\Http\\Controllers"},{"name":"DashboardRedirectController","methods":[{"name":"redirect","params":""}],"namespace":"App\\Http\\Controllers"},{"name":"MessagesController","methods":[{"name":"store","params":"Request $request, Conversation $conversation"},{"name":"markAsRead","params":"Request $request, Conversation $conversation"},{"name":"loadMore","params":"Request $request, Conversation $conversation"}],"namespace":"App\\Http\\Controllers"},{"name":"NotificationController","methods":[{"name":"index","params":""},{"name":"markAsRead","params":"$id"},{"name":"markAllAsRead","params":""},{"name":"destroy","params":"$id"}],"namespace":"App\\Http\\Controllers"},{"name":"ProfileController","methods":[{"name":"edit","params":"Request $request"},{"name":"update","params":"ProfileUpdateRequest $request, UploadService $upload"},{"name":"destroy","params":"Request $request"}],"namespace":"App\\Http\\Controllers"},{"name":"AssignedProjectsController","methods":[{"name":"index","params":""},{"name":"show","params":"Project $project"}],"namespace":"App\\Http\\Controllers\\Student"},{"name":"AvailableProjectsController","methods":[{"name":"index","params":""},{"name":"show","params":"Project $project"},{"name":"requestProject","params":"Request $request, Project $project"}],"namespace":"App\\Http\\Controllers\\Student"},{"name":"DashboardController","methods":[{"name":"dashboard","params":""}],"namespace":"App\\Http\\Controllers\\Student\\Dashboard"},{"name":"ProjectSubmissionsController","methods":[{"name":"index","params":""},{"name":"store","params":"Request $request"},{"name":"destroy","params":"ProjectSubmission $projectSubmission"}],"namespace":"App\\Http\\Controllers\\Student"},{"name":"DashboardController","methods":[{"name":"dashboard","params":""}],"namespace":"App\\Http\\Controllers\\Supervisor\\Dashboard"},{"name":"StudentsController","methods":[{"name":"index","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Supervisor\\Dashboard"},{"name":"DefensesController","methods":[{"name":"index","params":"Request $request"},{"name":"show","params":"Defense $defense"},{"name":"updateStatus","params":"Request $request, Defense $defense"}],"namespace":"App\\Http\\Controllers\\Supervisor"},{"name":"ProjectsController","methods":[{"name":"index","params":""},{"name":"create","params":""},{"name":"store","params":"Request $request"},{"name":"show","params":"Project $project"},{"name":"edit","params":"Project $project"},{"name":"update","params":"Request $request, Project $project"},{"name":"destroy","params":"Project $project"}],"namespace":"App\\Http\\Controllers\\Supervisor"},{"name":"ProjectSubmissionsController","methods":[{"name":"index","params":""},{"name":"show","params":"ProjectSubmission $projectSubmission"},{"name":"updateStatus","params":"Request $request, ProjectSubmission $projectSubmission"}],"namespace":"App\\Http\\Controllers\\Supervisor"},{"name":"StudentsController","methods":[{"name":"index","params":"Request $request"}],"namespace":"App\\Http\\Controllers\\Supervisor"},{"name":"SupervisedProjectsController","methods":[{"name":"index","params":"Request $request"},{"name":"show","params":"Project $project"},{"name":"updateType","params":"Request $request, Project $project"},{"name":"updateSubmissionStatus","params":"Request $request, ProjectSubmission $projectSubmission"}],"namespace":"App\\Http\\Controllers\\Supervisor"},{"name":"UploadsController","methods":[{"name":"filepondUpload","params":"Request $request"},{"name":"filepondRevert","params":"Request $request, $filename"},{"name":"filepondRemove","params":"Request $request, $filename"}],"namespace":"App\\Http\\Controllers"}],"services":[],"relationships":[{"sourceModel":"Setting","relationshipType":"belongsTo","relationshipName":"currency","targetModel":"Currency::class"},{"sourceModel":"User","relationshipType":"hasMany","relationshipName":"assignments","targetModel":"ProjectAssignment::class"},{"sourceModel":"User","relationshipType":"hasMany","relationshipName":"messages","targetModel":"Message::class"},{"sourceModel":"User","relationshipType":"belongsToMany","relationshipName":"conversations","targetModel":"Conversation::class"}],"directories":{".":{"models":["Conversation","ConversationParticipant","Currency","Defense","Department","Message","MessageRead","PaymentMethod","Project","ProjectAssignment","ProjectRequest","ProjectSubmission","Setting","Specialization","Upload","User"],"controllers":["ActivityLogsController","DashboardController","ProjectRequestsController","AssignmentsController","DefensesController","DepartmentsController","ProjectsController","SpecializationsController","CurrenciesController","PaymentMethodsController","SettingsController","RolesController","StudentsController","SupervisorsController","UsersController","AuthenticatedSessionController","ConfirmablePasswordController","EmailVerificationNotificationController","EmailVerificationPromptController","NewPasswordController","PasswordController","PasswordResetLinkController","RegisteredUserController","VerifyEmailController","Controller","ConversationsController","DashboardRedirectController","MessagesController","NotificationController","ProfileController","AssignedProjectsController","AvailableProjectsController","DashboardController","ProjectSubmissionsController","DashboardController","StudentsController","DefensesController","ProjectsController","ProjectSubmissionsController","StudentsController","SupervisedProjectsController","UploadsController"]}}};
+    
+    // DOM elements
+    const diagramEl = document.getElementById('diagram');
+    const applyFiltersBtn = document.getElementById('apply-filters');
+    const modelsCheckbox = document.getElementById('models-checkbox');
+    const controllersCheckbox = document.getElementById('controllers-checkbox');
+    const servicesCheckbox = document.getElementById('services-checkbox');
+    const directorySelect = document.getElementById('directory-select');
+    const showPropertiesCheckbox = document.getElementById('show-properties');
+    const showMethodsCheckbox = document.getElementById('show-methods');
+    const showRelationshipsCheckbox = document.getElementById('show-relationships');
+    const themeToggle = document.getElementById('theme-toggle');
+    const searchBox = document.getElementById('search-box');
+    const exportPngBtn = document.getElementById('export-png');
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomOutBtn = document.getElementById('zoom-out');
+    const zoomResetBtn = document.getElementById('zoom-reset');
+    
+    // Track zoom level
+    let zoomLevel = 1;
+    
+    // Generate and render diagram
+    function renderDiagram() {
+      diagramEl.innerHTML = '<div class="loading">Generating diagram...</div>';
+      
+      // Get selected entity types
+      const entityTypes = [];
+      if (modelsCheckbox.checked) entityTypes.push('models');
+      if (controllersCheckbox.checked) entityTypes.push('controllers');
+      if (servicesCheckbox.checked) entityTypes.push('services');
+      
+      // Get selected directory
+      const directory = directorySelect.value;
+      
+      // Get search term
+      const searchTerm = searchBox.value.trim().toLowerCase();
+      
+      // Generate mermaid diagram based on filters
+      let mermaidDiagram = 'classDiagram\n';
+      
+      // Filter and add models to diagram
+      if (entityTypes.includes('models')) {
+        diagramData.models.forEach(model => {
+          // Skip models not in the selected directory if directory filter is applied
+          if (directory && !model.filePath?.includes(directory)) return;
+          
+          // Skip models that don't match the search term
+          if (searchTerm && !model.name.toLowerCase().includes(searchTerm)) return;
+          
+          mermaidDiagram += `  class ${model.name} {\n`;
+          
+          // Add tableName if available
+          if (model.tableName) {
+            mermaidDiagram += `    <<Table: ${model.tableName}>>\n`;
+          }
+          
+          // Add properties if showing properties
+          if (showPropertiesCheckbox.checked && model.properties) {
+            model.properties.forEach(prop => {
+              const dataType = prop.dataType ? `: ${prop.dataType}` : '';
+              mermaidDiagram += `    +${prop.name}${dataType}\n`;
+            });
+          }
+          
+          // Add methods if showing methods
+          if (showMethodsCheckbox.checked && model.methods) {
+            model.methods.forEach(method => {
+              mermaidDiagram += `    +${method.name}(${method.params})\n`;
+            });
+          }
+          
+          mermaidDiagram += `  }\n`;
+        });
+      }
+      
+      // Add controllers if requested
+      if (entityTypes.includes('controllers') && diagramData.controllers) {
+        diagramData.controllers.forEach(controller => {
+          // Skip controllers not in the selected directory if directory filter is applied
+          if (directory && !controller.filePath?.includes(directory)) return;
+          
+          // Skip controllers that don't match the search term
+          if (searchTerm && !controller.name.toLowerCase().includes(searchTerm)) return;
+          
+          mermaidDiagram += `  class ${controller.name} {\n`;
+          mermaidDiagram += `    <<Controller>>\n`;
+          
+          // Add methods if showing methods
+          if (showMethodsCheckbox.checked && controller.methods) {
+            controller.methods.forEach(method => {
+              mermaidDiagram += `    +${method.name}(${method.params})\n`;
+            });
+          }
+          
+          mermaidDiagram += `  }\n`;
+        });
+      }
+      
+      // Add services if requested
+      if (entityTypes.includes('services') && diagramData.services) {
+        diagramData.services.forEach(service => {
+          // Skip services not in the selected directory if directory filter is applied
+          if (directory && !service.filePath?.includes(directory)) return;
+          
+          // Skip services that don't match the search term
+          if (searchTerm && !service.name.toLowerCase().includes(searchTerm)) return;
+          
+          mermaidDiagram += `  class ${service.name} {\n`;
+          mermaidDiagram += `    <<Service>>\n`;
+          
+          // Add methods if showing methods
+          if (showMethodsCheckbox.checked && service.methods) {
+            service.methods.forEach(method => {
+              mermaidDiagram += `    +${method.name}(${method.params})\n`;
+            });
+          }
+          
+          mermaidDiagram += `  }\n`;
+        });
+      }
+      
+      // Add relationships if showing relationships
+      if (showRelationshipsCheckbox.checked && entityTypes.includes('models')) {
+        diagramData.relationships.forEach(rel => {
+          const sourceModel = rel.sourceModel.replace(/::class$/, '');
+          const targetModel = rel.targetModel.replace(/::class$/, '');
+          
+          // Skip relationships where either model doesn't match search term
+          if (searchTerm && 
+              !sourceModel.toLowerCase().includes(searchTerm) && 
+              !targetModel.toLowerCase().includes(searchTerm)) {
+            return;
+          }
+          
+          let arrow;
+          let relationshipName = rel.relationshipName.toLowerCase();
+          
+          switch (rel.relationshipType) {
+            case 'hasOne':
+              arrow = '-->';
+              break;
+            case 'hasMany':
+              arrow = '--*';
+              break;
+            case 'belongsTo':
+              arrow = '<--';
+              break;
+            case 'belongsToMany':
+              arrow = '<--*';
+              break;
+            default:
+              arrow = '-->';
+          }
+          
+          mermaidDiagram += `  ${sourceModel} ${arrow} ${targetModel} : ${relationshipName}\n`;
+        });
+      }
+      
+      // Render mermaid diagram
+      try {
+        mermaid.render('mermaid-diagram', mermaidDiagram).then(result => {
+          diagramEl.innerHTML = result.svg;
+          // Apply zoom
+          const svgElement = diagramEl.querySelector('svg');
+          if (svgElement) {
+            svgElement.style.transform = `scale(${zoomLevel})`;
+            svgElement.style.transformOrigin = 'top left';
+          }
+        });
+      } catch (error) {
+        diagramEl.innerHTML = `<div class="loading">Error generating diagram: ${error.message}</div>`;
+      }
+    }
+    
+    // Apply filters and render diagram
+    applyFiltersBtn.addEventListener('click', renderDiagram);
+    
+    // Toggle theme
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark-theme');
+      const isDark = document.body.classList.contains('dark-theme');
+      themeToggle.textContent = isDark ? '☀️' : '🌙';
+      // Update mermaid theme based on current theme
+      mermaid.initialize({
+        theme: isDark ? 'dark' : 'default'
+      });
+      
+      // Re-render diagram with new theme
+      renderDiagram();
+    });
+    
+    // Handle zoom controls
+    zoomInBtn.addEventListener('click', () => {
+      zoomLevel += 0.1;
+      const svgElement = diagramEl.querySelector('svg');
+      if (svgElement) {
+        svgElement.style.transform = 'scale(' + zoomLevel + ')';
+      }
+    });
+    
+    zoomOutBtn.addEventListener('click', () => {
+      zoomLevel = Math.max(0.1, zoomLevel - 0.1);
+      const svgElement = diagramEl.querySelector('svg');
+      if (svgElement) {
+        svgElement.style.transform = 'scale(' + zoomLevel + ')';
+      }
+    });
+    
+    zoomResetBtn.addEventListener('click', () => {
+      zoomLevel = 1;
+      const svgElement = diagramEl.querySelector('svg');
+      if (svgElement) {
+        svgElement.style.transform = 'scale(' + zoomLevel + ')';
+      }
+    });
+    
+    // Export diagram as PNG
+    exportPngBtn.addEventListener('click', () => {
+      const svgElement = diagramEl.querySelector('svg');
+      if (!svgElement) return;
+      
+      // Create a canvas element
+      const canvas = document.createElement('canvas');
+      const svgRect = svgElement.getBoundingClientRect();
+      
+      // Set canvas dimensions to match SVG
+      canvas.width = svgRect.width * 2; // Higher resolution
+      canvas.height = svgRect.height * 2; // Higher resolution
+      
+      const ctx = canvas.getContext('2d');
+      ctx.scale(2, 2); // Scale for higher resolution
+      
+      // Create image from SVG
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const img = new Image();
+      img.onload = () => {
+        // Draw white background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw SVG on canvas
+        ctx.drawImage(img, 0, 0);
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.download = 'uml-diagram.png';
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+      
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    });
+    
+    // Handle search input with debounce
+    let searchTimeout;
+    searchBox.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(renderDiagram, 300);
+    });
+    
+    // Initialize and render diagram
+    renderDiagram();
+    
+    // Check for system dark mode preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark-theme');
+      themeToggle.textContent = '☀️';
+    }
+    
+    // Listen for changes in the system color scheme
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if (e.matches) {
+        document.body.classList.add('dark-theme');
+        themeToggle.textContent = '☀️';
+      } else {
+        document.body.classList.remove('dark-theme');
+        themeToggle.textContent = '🌙';
+      }
+      
+      // Update mermaid theme based on system preference
+      mermaid.initialize({
+        theme: e.matches ? 'dark' : 'default'
+      });
+      
+      // Re-render diagram with new theme
+      renderDiagram();
+    });
+  </script>
+</body>
+</html>
+  

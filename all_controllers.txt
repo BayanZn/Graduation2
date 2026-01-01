@@ -1,0 +1,4156 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Spatie\Activitylog\Models\Activity;
+
+class ActivityLogsController extends Controller
+{
+    public function index()
+    {
+        abort_if(Gate::denies('access_activity_logs'), 403);
+
+        request()->validate([
+            'direction' => ['in:asc,desc'],
+            'field' => ['in:created_at'],
+        ]);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $start_date = get_start_end_date(request()->input('date_range'))[0];
+        $end_date = get_start_end_date(request()->input('date_range'))[1];
+
+        $logs = Activity::query()
+            ->when(request()->has('field'), function ($query) {
+                return $query
+                    ->orderBy(request()->input('field'), request()->input('direction'));
+            })
+            ->when(request()->has('search'), function ($query) {
+                $query
+                    ->where('log_name', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('description', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('subject_type', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->when(request()->input('date_range'), function ($query) use ($start_date, $end_date) {
+                $query->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])
+                    ->when(request()->has('search'), function ($query) {
+                        $query
+                            ->where('log_name', 'LIKE', '%'.request()->input('search').'%')
+                            ->orWhere('description', 'LIKE', '%'.request()->input('search').'%')
+                            ->orWhere('subject_type', 'LIKE', '%'.request()->input('search').'%');
+                    });
+            })
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/ActivityLogs/Index', [
+            'logs' => $logs,
+            'filters' => request()->all('per_page', 'search', 'date_range', 'field', 'direction'),
+        ]);
+    }
+
+    public function destroy(Activity $activity_log)
+    {
+        abort_if(Gate::denies('access_activity_logs'), 403);
+
+        $activity_log->delete();
+
+        return Redirect::route('activity-logs.index');
+    }
+
+    /**
+     * Delete multiple activity logs
+     */
+    public function destroyMultiple(Request $request)
+    {
+        abort_if(Gate::denies('access_activity_logs'), 403);
+
+        Activity::whereIn('id', $request->selected_ids)->delete();
+
+        return Redirect::route('activity-logs.index');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Dashboard;
+
+use App\Http\Controllers\Controller;
+use App\Models\Defense;
+use App\Models\Project;
+use App\Models\ProjectAssignment;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+
+class DashboardController extends Controller
+{
+    public function dashboard()
+    {
+        // Overview Statistics
+        $overview = [
+            'total_projects' => Project::count(),
+            'total_students' => ProjectAssignment::where('role', 'student')->distinct('user_id')->count('user_id'),
+            'total_supervisors' => ProjectAssignment::where('role', 'supervisor')->distinct('user_id')->count('user_id'),
+            'pending_defenses' => Defense::where('status', 'scheduled')->count(),
+        ];
+
+        // Projects by Status
+        $projectsByStatus = Project::select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // Projects by Type/Level
+        $projectsByType = Project::select('project_type', DB::raw('count(*) as count'))
+            ->groupBy('project_type')
+            ->pluck('count', 'project_type')
+            ->toArray();
+
+        // Projects by Specialization
+        $projectsBySpecialization = Project::join('specializations', 'projects.specialization_id', '=', 'specializations.id')
+            ->select('specializations.short_name', 'specializations.name', DB::raw('count(*) as count'))
+            ->groupBy('specializations.id', 'specializations.short_name', 'specializations.name')
+            ->get()
+            ->toArray();
+
+        // Projects by Department
+        $projectsByDepartment = Project::join('departments', 'projects.department_id', '=', 'departments.id')
+            ->select('departments.short_name', 'departments.name', DB::raw('count(*) as count'))
+            ->groupBy('departments.id', 'departments.short_name', 'departments.name')
+            ->get()
+            ->toArray();
+
+        // Defense Statistics
+        $defenseStats = Defense::select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // Defense Types
+        $defensesByType = Defense::select('discussion_type', DB::raw('count(*) as count'))
+            ->groupBy('discussion_type')
+            ->pluck('count', 'discussion_type')
+            ->toArray();
+
+        // Recent Projects (last 5)
+        $recentProjects = Project::with(['department', 'specialization', 'creator'])
+            ->latest()
+            ->take(5)
+            ->get()
+            ->toArray();
+
+        // Upcoming Defenses (next 5)
+        $upcomingDefenses = Defense::with(['project', 'creator'])
+            ->where('status', 'scheduled')
+            ->where('discussion_date', '>=', now())
+            ->orderBy('discussion_date')
+            ->take(5)
+            ->get()
+            ->toArray();
+
+        // Supervisor Workload (top 10)
+        $supervisorWorkload = ProjectAssignment::join('users', 'project_assignments.user_id', '=', 'users.id')
+            ->where('project_assignments.role', 'supervisor')
+            ->select('users.name', DB::raw('count(*) as count'))
+            ->groupBy('users.id', 'users.name')
+            ->orderByDesc('count')
+            ->take(10)
+            ->get()
+            ->toArray();
+
+        // Project Status by Specialization
+        $statusBySpecialization = Project::join('specializations', 'projects.specialization_id', '=', 'specializations.id')
+            ->select('specializations.short_name', 'projects.status', DB::raw('count(*) as count'))
+            ->groupBy('specializations.short_name', 'projects.status')
+            ->get()
+            ->groupBy('short_name')
+            ->map(function ($items) {
+                return $items->pluck('count', 'status')->toArray();
+            })
+            ->toArray();
+
+        // Project Type by Specialization
+        $typeBySpecialization = Project::join('specializations', 'projects.specialization_id', '=', 'specializations.id')
+            ->select('specializations.short_name', 'projects.project_type', DB::raw('count(*) as count'))
+            ->groupBy('specializations.short_name', 'projects.project_type')
+            ->get()
+            ->groupBy('short_name')
+            ->map(function ($items) {
+                return $items->pluck('count', 'project_type')->toArray();
+            })
+            ->toArray();
+
+        return Inertia::render('Admin/Dashboard', [
+            'overview' => $overview,
+            'projectsByStatus' => $projectsByStatus,
+            'projectsByType' => $projectsByType,
+            'projectsBySpecialization' => $projectsBySpecialization,
+            'projectsByDepartment' => $projectsByDepartment,
+            'defenseStats' => $defenseStats,
+            'defensesByType' => $defensesByType,
+            'recentProjects' => $recentProjects,
+            'upcomingDefenses' => $upcomingDefenses,
+            'statusBySpecialization' => $statusBySpecialization,
+            'typeBySpecialization' => $typeBySpecialization,
+            'supervisorWorkload' => $supervisorWorkload,
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\ProjectAssignment;
+use App\Models\ProjectRequest;
+use App\Models\User;
+use App\Notifications\ProjectAssignedNotification;
+use App\Notifications\SupervisorAssignedNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class ProjectRequestsController extends Controller
+{
+    /**
+     * Display a listing of project requests.
+     */
+    public function index()
+    {
+        $per_page = request()->input('per_page') ?? 10;
+
+        $requests = ProjectRequest::query()
+            ->with(['project', 'student', 'reviewer'])
+            ->when(request()->has('search'), function ($query) {
+                return $query->whereHas('student', function ($q) {
+                    $q->where('name', 'LIKE', '%'.request()->input('search').'%');
+                })->orWhereHas('project', function ($q) {
+                    $q->where('title', 'LIKE', '%'.request()->input('search').'%');
+                });
+            })
+            ->when(request()->has('status'), function ($query) {
+                return $query->where('status', request()->input('status'));
+            })
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/ProjectRequests/Index', [
+            'requests' => $requests,
+            'filters' => request()->all('search', 'per_page', 'status'),
+        ]);
+    }
+
+    /**
+     * Display the specified project request.
+     */
+    public function show(ProjectRequest $projectRequest)
+    {
+        $projectRequest->load([
+            'project.department',
+            'project.specialization',
+            'project.supervisors',
+            'project.assignments.user',
+            'student',
+            'reviewer',
+        ]);
+
+        // Load group members if group request
+        $groupMembers = [];
+        if ($projectRequest->request_type === 'group' && $projectRequest->group_members) {
+            $groupMembers = User::whereIn('id', $projectRequest->group_members)
+                ->select('id', 'name', 'email')
+                ->get();
+        }
+
+        // Get all supervisors for selection
+        $supervisors = User::role('supervisor')
+            ->select('id', 'name', 'email')
+            ->get();
+
+        return Inertia::render('Admin/ProjectRequests/Show', [
+            'projectRequest' => $projectRequest,
+            'groupMembers' => $groupMembers,
+            'supervisors' => $supervisors,
+        ]);
+    }
+
+    /**
+     * Approve a project request and create assignments.
+     */
+    public function approve(Request $request, ProjectRequest $projectRequest)
+    {
+        if ($projectRequest->status !== 'pending') {
+            return Redirect::back()->with('error', 'This request has already been processed.');
+        }
+
+        $validated = $request->validate([
+            'supervisor_ids' => 'required|array|min:1',
+            'supervisor_ids.*' => 'exists:users,id',
+        ], [
+            'supervisor_ids.required' => 'Please select at least one supervisor.',
+            'supervisor_ids.*.exists' => 'One or more selected supervisors are invalid.',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Update request status
+            $projectRequest->update([
+                'status' => 'approved',
+                'reviewed_by' => Auth::id(),
+                'reviewed_at' => now(),
+            ]);
+
+            $project = Project::find($projectRequest->project_id);
+
+            // Create assignment for the requesting student
+            ProjectAssignment::updateOrCreate([
+                'project_id' => $projectRequest->project_id,
+                'user_id' => $projectRequest->student_id,
+                'role' => 'student',
+            ]);
+
+            // Notify the requesting student
+            $projectRequest->student->notify(new ProjectAssignedNotification($project));
+
+            // Create assignments for group members if group request
+            if ($projectRequest->request_type === 'group' && $projectRequest->group_members) {
+                foreach ($projectRequest->group_members as $memberId) {
+                    ProjectAssignment::updateOrCreate([
+                        'project_id' => $projectRequest->project_id,
+                        'user_id' => $memberId,
+                        'role' => 'student',
+                    ]);
+
+                    // Notify each group member
+                    $member = User::find($memberId);
+                    if ($member) {
+                        $member->notify(new ProjectAssignedNotification($project));
+                    }
+                }
+            }
+
+            // Create assignments for supervisors
+            foreach ($validated['supervisor_ids'] as $supervisorId) {
+                ProjectAssignment::updateOrCreate([
+                    'project_id' => $projectRequest->project_id,
+                    'user_id' => $supervisorId,
+                    'role' => 'supervisor',
+                ]);
+
+                // Notify each supervisor
+                $supervisor = User::find($supervisorId);
+                if ($supervisor) {
+                    $supervisor->notify(new SupervisorAssignedNotification($project));
+                }
+            }
+
+            DB::commit();
+
+            return Redirect::route('project.requests.index')
+                ->with('success', 'Project request approved and assignments created successfully!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Project request approval failed: '.$e->getMessage());
+
+            return Redirect::back()->with('error', 'Failed to approve request: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Reject a project request.
+     */
+    public function reject(Request $request, ProjectRequest $projectRequest)
+    {
+        if ($projectRequest->status !== 'pending') {
+            return Redirect::back()->with('error', 'This request has already been processed.');
+        }
+
+        $projectRequest->update([
+            'status' => 'rejected',
+            'reviewed_by' => Auth::id(),
+            'reviewed_at' => now(),
+        ]);
+
+        return Redirect::route('project.requests.index')
+            ->with('success', 'Project request rejected successfully.');
+    }
+
+    /**
+     * Reset a rejected request back to pending.
+     */
+    public function resetToPending(ProjectRequest $projectRequest)
+    {
+        if ($projectRequest->status !== 'rejected') {
+            return Redirect::back()->with('error', 'Only rejected requests can be reset to pending.');
+        }
+
+        $projectRequest->update([
+            'status' => 'pending',
+            'reviewed_by' => null,
+            'reviewed_at' => null,
+        ]);
+
+        return Redirect::back()->with('success', 'Request has been reset to pending successfully.');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Projects;
+
+use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class AssignmentsController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        abort_if(Gate::denies('view_assignments'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $projects = Project::with(['supervisors', 'students', 'department', 'specialization'])
+            ->whereHas('assignments')
+            ->when(request()->has('search'), function ($query) {
+                return $query->where('title', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Projects/Assignments/Index', [
+            'projects' => $projects,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        abort_if(Gate::denies('create_assignments'), 403);
+
+        $projects = Project::where('status', 'Approved')
+            ->with(['department', 'specialization'])
+            ->get();
+
+        $supervisors = User::whereHas('roles', function ($query) {
+            $query->where('name', 'supervisor');
+        })->get();
+
+        $students = User::whereHas('roles', function ($query) {
+            $query->where('name', 'student');
+        })->get();
+
+        return Inertia::render('Admin/Projects/Assignments/Create', [
+            'projects' => $projects,
+            'supervisors' => $supervisors,
+            'students' => $students,
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        abort_if(Gate::denies('create_assignments'), 403);
+
+        $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'supervisors' => 'required|array|min:1',
+            'supervisors.*' => 'exists:users,id',
+            'students' => 'required|array|min:1',
+            'students.*' => 'exists:users,id',
+        ]);
+
+        $project = Project::findOrFail($request->project_id);
+
+        // Assign supervisors
+        foreach ($request->supervisors as $supervisorId) {
+            $project->assignSupervisor($supervisorId);
+        }
+
+        // Assign students
+        foreach ($request->students as $studentId) {
+            $project->assignStudent($studentId);
+        }
+
+        return Redirect::route('assignments.index');
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Project $project)
+    {
+        abort_if(Gate::denies('view_assignments'), 403);
+
+        $project->load([
+            'department',
+            'specialization',
+            'supervisors',
+            'students',
+            'defenses' => function ($query) {
+                $query->with('members')->latest('discussion_date');
+            },
+        ]);
+
+        return Inertia::render('Admin/Projects/Assignments/Show', [
+            'project' => $project,
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Project $project)
+    {
+        abort_if(Gate::denies('edit_assignments'), 403);
+
+        $project->load(['supervisors', 'students', 'department', 'specialization']);
+
+        $allProjects = Project::with(['department', 'specialization'])->get();
+
+        $allSupervisors = User::whereHas('roles', function ($query) {
+            $query->where('name', 'supervisor');
+        })->get();
+
+        $allStudents = User::whereHas('roles', function ($query) {
+            $query->where('name', 'student');
+        })->get();
+
+        return Inertia::render('Admin/Projects/Assignments/Edit', [
+            'project' => $project,
+            'allProjects' => $allProjects,
+            'allSupervisors' => $allSupervisors,
+            'allStudents' => $allStudents,
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Project $project)
+    {
+        abort_if(Gate::denies('edit_assignments'), 403);
+
+        $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'supervisors' => 'required|array|min:1',
+            'supervisors.*' => 'exists:users,id',
+            'students' => 'required|array|min:1',
+            'students.*' => 'exists:users,id',
+        ]);
+
+        // If project has changed, remove all assignments from old project first
+        if ($project->id != $request->project_id) {
+            $currentSupervisors = $project->supervisors->pluck('id')->toArray();
+            $currentStudents = $project->students->pluck('id')->toArray();
+
+            foreach ($currentSupervisors as $supervisorId) {
+                $project->removeSupervisor($supervisorId);
+            }
+
+            foreach ($currentStudents as $studentId) {
+                $project->removeStudent($studentId);
+            }
+
+            // Get the new project
+            $project = Project::findOrFail($request->project_id);
+        }
+
+        // Sync supervisors
+        $currentSupervisors = $project->supervisors->pluck('id')->toArray();
+        $newSupervisors = $request->supervisors;
+
+        // Remove supervisors not in the new list
+        foreach ($currentSupervisors as $supervisorId) {
+            if (! in_array($supervisorId, $newSupervisors)) {
+                $project->removeSupervisor($supervisorId);
+            }
+        }
+
+        // Add new supervisors
+        foreach ($newSupervisors as $supervisorId) {
+            $project->assignSupervisor($supervisorId);
+        }
+
+        // Sync students
+        $currentStudents = $project->students->pluck('id')->toArray();
+        $newStudents = $request->students;
+
+        // Remove students not in the new list
+        foreach ($currentStudents as $studentId) {
+            if (! in_array($studentId, $newStudents)) {
+                $project->removeStudent($studentId);
+            }
+        }
+
+        // Add new students
+        foreach ($newStudents as $studentId) {
+            $project->assignStudent($studentId);
+        }
+
+        return Redirect::route('assignments.index');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Project $project)
+    {
+        abort_if(Gate::denies('delete_assignments'), 403);
+
+        $project->assignments()->delete();
+
+        return Redirect::route('assignments.index');
+    }
+
+    /**
+     * Remove a supervisor from a project.
+     */
+    public function removeSupervisor(Project $project, User $user)
+    {
+        abort_if(Gate::denies('edit_assignments'), 403);
+
+        $project->removeSupervisor($user->id);
+
+        return Redirect::back();
+    }
+
+    /**
+     * Remove a student from a project.
+     */
+    public function removeStudent(Project $project, User $user)
+    {
+        abort_if(Gate::denies('edit_assignments'), 403);
+
+        $project->removeStudent($user->id);
+
+        return Redirect::back();
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Projects;
+
+use App\Http\Controllers\Controller;
+use App\Models\Defense;
+use App\Models\Project;
+use App\Models\User;
+use App\Notifications\DefenseScheduledNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class DefensesController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
+    {
+        abort_if(Gate::denies('view_defenses'), 403);
+
+        $defenses = Defense::with(['project.department', 'project.specialization', 'project.students', 'members', 'creator'])
+            ->when($request->search, function ($query, $search) {
+                $query->whereHas('project', function ($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%");
+                })->orWhere('discussion_hall', 'like', "%{$search}%");
+            })
+            ->latest('discussion_date')
+            ->paginate($request->per_page ?? 10)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Projects/Defenses/Index', [
+            'defenses' => $defenses,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        abort_if(Gate::denies('create_defenses'), 403);
+
+        $projects = Project::where('status', 'Approved')
+            ->with(['department', 'specialization', 'supervisors'])
+            ->get();
+
+        $supervisors = User::whereHas('roles', function ($query) {
+            $query->where('name', 'supervisor');
+        })->get();
+
+        return Inertia::render('Admin/Projects/Defenses/Create', [
+            'projects' => $projects,
+            'supervisors' => $supervisors,
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        abort_if(Gate::denies('create_defenses'), 403);
+
+        $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'discussion_hall' => 'required|string|max:255',
+            'discussion_date' => 'required|date',
+            'discussion_type' => 'required|in:proposal,seminar,final',
+            'members' => 'required|array|min:1',
+            'members.*' => 'exists:users,id',
+            'notes' => 'nullable|string',
+        ]);
+
+        $defense = Defense::create([
+            'project_id' => $request->project_id,
+            'discussion_hall' => $request->discussion_hall,
+            'discussion_date' => $request->discussion_date,
+            'discussion_type' => $request->discussion_type,
+            'status' => 'scheduled',
+            'notes' => $request->notes,
+            'created_by' => Auth::id(),
+        ]);
+
+        // Add members
+        foreach ($request->members as $memberId) {
+            $defense->addMember($memberId);
+        }
+
+        // Load relationships for notification
+        $defense->load(['project', 'members']);
+
+        // Get the project
+        $project = Project::with(['students', 'supervisors'])->find($request->project_id);
+
+        // Notify all students assigned to this project
+        foreach ($project->students as $student) {
+            $student->notify(new DefenseScheduledNotification($defense));
+        }
+
+        // Notify all supervisors assigned to this project
+        foreach ($project->supervisors as $supervisor) {
+            $supervisor->notify(new DefenseScheduledNotification($defense));
+        }
+
+        // Notify defense committee members
+        foreach ($defense->members as $member) {
+            $member->notify(new DefenseScheduledNotification($defense));
+        }
+
+        return Redirect::route('defenses.index');
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Defense $defense)
+    {
+        abort_if(Gate::denies('view_defenses'), 403);
+
+        $defense->load([
+            'project.department',
+            'project.specialization',
+            'project.students',
+            'project.supervisors',
+            'members',
+            'creator',
+        ]);
+
+        return Inertia::render('Admin/Projects/Defenses/Show', [
+            'defense' => $defense,
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Defense $defense)
+    {
+        abort_if(Gate::denies('edit_defenses'), 403);
+
+        $defense->load(['project.department', 'project.specialization', 'members']);
+
+        $supervisors = User::whereHas('roles', function ($query) {
+            $query->where('name', 'supervisor');
+        })->get();
+
+        return Inertia::render('Admin/Projects/Defenses/Edit', [
+            'defense' => $defense,
+            'supervisors' => $supervisors,
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Defense $defense)
+    {
+        abort_if(Gate::denies('edit_defenses'), 403);
+
+        $request->validate([
+            'discussion_hall' => 'required|string|max:255',
+            'discussion_date' => 'required|date',
+            'discussion_type' => 'required|in:proposal,seminar,final',
+            'members' => 'required|array|min:1',
+            'members.*' => 'exists:users,id',
+            'notes' => 'nullable|string',
+        ]);
+
+        $defense->update([
+            'discussion_hall' => $request->discussion_hall,
+            'discussion_date' => $request->discussion_date,
+            'discussion_type' => $request->discussion_type,
+            'notes' => $request->notes,
+        ]);
+
+        // Sync members
+        $currentMembers = $defense->members->pluck('id')->toArray();
+        $newMembers = $request->members;
+
+        // Remove members not in the new list
+        foreach ($currentMembers as $memberId) {
+            if (! in_array($memberId, $newMembers)) {
+                $defense->removeMember($memberId);
+            }
+        }
+
+        // Add new members
+        foreach ($newMembers as $memberId) {
+            $defense->addMember($memberId);
+        }
+
+        return Redirect::route('defenses.index');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Defense $defense)
+    {
+        abort_if(Gate::denies('delete_defenses'), 403);
+
+        $defense->delete();
+
+        return Redirect::route('defenses.index');
+    }
+
+    /**
+     * Remove a member from a defense.
+     */
+    public function removeMember(Defense $defense, User $user)
+    {
+        abort_if(Gate::denies('edit_defenses'), 403);
+
+        $defense->removeMember($user->id);
+
+        return Redirect::back();
+    }
+
+    /**
+     * Update the status of a defense.
+     */
+    public function updateStatus(Request $request, Defense $defense)
+    {
+        abort_if(Gate::denies('edit_defenses'), 403);
+
+        $request->validate([
+            'status' => 'required|in:scheduled,completed,cancelled',
+        ]);
+
+        $defense->update(['status' => $request->status]);
+
+        return Redirect::back();
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Projects;
+
+use App\Exports\DepartmentsExport;
+use App\Http\Controllers\Controller;
+use App\Imports\DepartmentsImport;
+use App\Models\Department;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+
+class DepartmentsController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        abort_if(Gate::denies('access_departments'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $departments = Department::query()
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('name', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('short_name', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Projects/Departments/Index', [
+            'departments' => $departments,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        abort_if(Gate::denies('access_departments'), 403);
+
+        $request->validate([
+            'short_name' => 'required|string|max:20|unique:departments,short_name',
+            'name' => 'required|string|max:255',
+        ]);
+
+        Department::create($request->all());
+
+        return Redirect::route('departments.index');
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        abort_if(Gate::denies('access_departments'), 403);
+
+        $department = Department::findOrFail($id);
+
+        return response()->json($department);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Department $department)
+    {
+        abort_if(Gate::denies('access_departments'), 403);
+
+        $request->validate([
+            'short_name' => 'required|string|max:20|unique:departments,short_name,'.$department->id,
+            'name' => 'required|string|max:255',
+        ]);
+
+        $department->update($request->all());
+
+        return Redirect::route('departments.index');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Department $department)
+    {
+        abort_if(Gate::denies('access_departments'), 403);
+
+        $department->delete();
+
+        return Redirect::route('departments.index');
+    }
+
+    /**
+     * Export departments to Excel.
+     */
+    public function export()
+    {
+        abort_if(Gate::denies('access_departments'), 403);
+
+        $filters = request()->only(['search']);
+
+        return Excel::download(new DepartmentsExport($filters), 'departments_'.now()->format('Y-m-d_H-i-s').'.xlsx');
+    }
+
+    /**
+     * Import departments from Excel.
+     */
+    public function import(Request $request)
+    {
+        abort_if(Gate::denies('access_departments'), 403);
+
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv',
+        ]);
+
+        try {
+            Excel::import(new DepartmentsImport, $request->file('file'));
+
+            return Redirect::back()->with('message', [
+                'type' => 'success',
+                'message' => 'Departments imported successfully!',
+            ]);
+        } catch (\Exception $e) {
+            return Redirect::back()->with('message', [
+                'type' => 'error',
+                'message' => 'Error importing departments: '.$e->getMessage(),
+            ]);
+        }
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Projects;
+
+use App\Exports\ProjectsExport;
+use App\Http\Controllers\Controller;
+use App\Imports\ProjectsImport;
+use App\Models\Department;
+use App\Models\Project;
+use App\Models\Specialization;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+
+class ProjectsController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        abort_if(Gate::denies('view_projects'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $projects = Project::query()
+            ->with(['department', 'specialization', 'creator'])
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('title', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('project_type', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Projects/Index', [
+            'projects' => $projects,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Display proposed projects.
+     */
+    public function proposed()
+    {
+        abort_if(Gate::denies('view_projects'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $projects = Project::query()
+            ->with(['department', 'specialization', 'creator'])
+            ->where('status', 'Proposed')
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('title', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('project_type', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Projects/Proposed', [
+            'projects' => $projects,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Display approved projects.
+     */
+    public function approved()
+    {
+        abort_if(Gate::denies('view_projects'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $projects = Project::query()
+            ->with(['department', 'specialization', 'creator'])
+            ->where('status', 'Approved')
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('title', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('project_type', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Projects/Approved', [
+            'projects' => $projects,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Display declined projects.
+     */
+    public function declined()
+    {
+        abort_if(Gate::denies('view_projects'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $projects = Project::query()
+            ->with(['department', 'specialization', 'creator'])
+            ->where('status', 'Rejected')
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('title', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('project_type', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Projects/Declined', [
+            'projects' => $projects,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        abort_if(Gate::denies('create_projects'), 403);
+
+        $departments = Department::all();
+        $specializations = Specialization::all();
+
+        return Inertia::render('Admin/Projects/Create', [
+            'departments' => $departments,
+            'specializations' => $specializations,
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        abort_if(Gate::denies('create_projects'), 403);
+
+        $request->validate([
+            'title' => 'required|string|max:255|unique:projects,title',
+            'description' => 'required|string',
+            'project_type' => 'required|string|in:Semester,Graduation 1,Graduation 2',
+            'specialization_id' => 'required|exists:specializations,id',
+            'department_id' => 'required|exists:departments,id',
+            'status' => 'nullable|string|in:Proposed,Approved,Rejected,Completed',
+        ], [
+            'title.unique' => 'A project with this title already exists. Please use a different title.',
+        ]);
+
+        Project::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'project_type' => $request->project_type,
+            'specialization_id' => $request->specialization_id,
+            'department_id' => $request->department_id,
+            'status' => $request->status ?? 'Proposed',
+            'created_by' => Auth::id(),
+        ]);
+
+        return Redirect::route('projects.proposed');
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Project $project)
+    {
+        abort_if(Gate::denies('view_projects'), 403);
+
+        $project->load([
+            'department',
+            'specialization',
+            'creator',
+            'supervisors',
+            'students',
+            'defenses' => function ($query) {
+                $query->with('members')->latest('discussion_date');
+            },
+        ]);
+
+        // Load all submissions for this project
+        $submissions = $project->submissions()
+            ->with(['uploadedBy:id,name,email', 'reviewer:id,name'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return Inertia::render('Admin/Projects/Show', [
+            'project' => $project,
+            'submissions' => $submissions,
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Project $project)
+    {
+        abort_if(Gate::denies('edit_projects'), 403);
+
+        $departments = Department::all();
+        $specializations = Specialization::all();
+
+        return Inertia::render('Admin/Projects/Edit', [
+            'project' => $project->load(['department', 'specialization']),
+            'departments' => $departments,
+            'specializations' => $specializations,
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Project $project)
+    {
+        abort_if(Gate::denies('edit_projects'), 403);
+
+        $request->validate([
+            'title' => 'required|string|max:255|unique:projects,title,'.$project->id,
+            'description' => 'required|string',
+            'project_type' => 'required|string|in:Semester,Graduation 1,Graduation 2',
+            'specialization_id' => 'required|exists:specializations,id',
+            'department_id' => 'required|exists:departments,id',
+            'status' => 'nullable|string|in:Proposed,Approved,Rejected,Completed',
+        ], [
+            'title.unique' => 'A project with this title already exists. Please use a different title.',
+        ]);
+
+        $project->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'project_type' => $request->project_type,
+            'specialization_id' => $request->specialization_id,
+            'department_id' => $request->department_id,
+            'status' => $request->status,
+        ]);
+
+        return Redirect::route('projects.proposed');
+    }
+
+    /**
+     * Update the status of the specified resource.
+     */
+    public function updateStatus(Request $request, Project $project)
+    {
+        abort_if(Gate::denies('edit_projects'), 403);
+
+        $request->validate([
+            'status' => 'required|string|in:Proposed,Approved,Rejected,Completed',
+        ]);
+
+        $project->update([
+            'status' => $request->status,
+        ]);
+
+        return Redirect::back();
+    }
+
+    /**
+     * Update the project type of the specified resource.
+     */
+    public function updateType(Request $request, Project $project)
+    {
+        abort_if(Gate::denies('edit_projects'), 403);
+
+        $request->validate([
+            'project_type' => 'required|string|in:Semester,Graduation 1,Graduation 2',
+        ]);
+
+        $project->update([
+            'project_type' => $request->project_type,
+        ]);
+
+        return Redirect::back();
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Project $project)
+    {
+        abort_if(Gate::denies('delete_projects'), 403);
+
+        $project->delete();
+
+        return Redirect::back();
+    }
+
+    /**
+     * Export projects to Excel.
+     */
+    public function export()
+    {
+        abort_if(Gate::denies('view_projects'), 403);
+
+        $filters = request()->only(['search']);
+
+        return Excel::download(new ProjectsExport($filters), 'projects_'.now()->format('Y-m-d_H-i-s').'.xlsx');
+    }
+
+    /**
+     * Import projects from Excel.
+     */
+    public function import(Request $request)
+    {
+        abort_if(Gate::denies('create_projects'), 403);
+
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv',
+        ]);
+
+        try {
+            $import = new ProjectsImport;
+            Excel::import($import, $request->file('file'));
+
+            $message = 'Projects imported successfully!';
+            $type = 'success';
+
+            // Check for errors or skipped rows
+            if (! empty($import->errors) || ! empty($import->skipped)) {
+                $errorMessages = [];
+
+                if (! empty($import->errors)) {
+                    $errorMessages[] = '<strong>Validation Errors:</strong><br>'.implode('<br>', array_slice($import->errors, 0, 5));
+                    if (count($import->errors) > 5) {
+                        $errorMessages[] = '... and '.(count($import->errors) - 5).' more errors';
+                    }
+                }
+
+                if (! empty($import->skipped)) {
+                    $errorMessages[] = '<strong>Skipped Rows:</strong><br>'.implode('<br>', array_slice($import->skipped, 0, 5));
+                    if (count($import->skipped) > 5) {
+                        $errorMessages[] = '... and '.(count($import->skipped) - 5).' more skipped';
+                    }
+                }
+
+                $message = 'Import completed with issues:<br>'.implode('<br>', $errorMessages);
+                $type = 'warning';
+            }
+
+            return Redirect::back()->with('message', [
+                'type' => $type,
+                'message' => $message,
+            ]);
+        } catch (\Exception $e) {
+            return Redirect::back()->with('message', [
+                'type' => 'error',
+                'message' => 'Error importing projects: '.$e->getMessage(),
+            ]);
+        }
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Projects;
+
+use App\Exports\SpecializationsExport;
+use App\Http\Controllers\Controller;
+use App\Imports\SpecializationsImport;
+use App\Models\Specialization;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+
+class SpecializationsController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        abort_if(Gate::denies('access_specializations'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $specializations = Specialization::query()
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('name', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('short_name', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Projects/Specializations/Index', [
+            'specializations' => $specializations,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        abort_if(Gate::denies('access_specializations'), 403);
+
+        $request->validate([
+            'short_name' => 'required|string|max:20|unique:specializations,short_name',
+            'name' => 'required|string|max:255',
+        ]);
+
+        Specialization::create($request->all());
+
+        return Redirect::route('specializations.index');
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        abort_if(Gate::denies('access_specializations'), 403);
+
+        $specialization = Specialization::findOrFail($id);
+
+        return response()->json($specialization);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Specialization $specialization)
+    {
+        abort_if(Gate::denies('access_specializations'), 403);
+
+        $request->validate([
+            'short_name' => 'required|string|max:20|unique:specializations,short_name,'.$specialization->id,
+            'name' => 'required|string|max:255',
+        ]);
+
+        $specialization->update($request->all());
+
+        return Redirect::route('specializations.index');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Specialization $specialization)
+    {
+        abort_if(Gate::denies('access_specializations'), 403);
+
+        $specialization->delete();
+
+        return Redirect::route('specializations.index');
+    }
+
+    /**
+     * Export specializations to Excel.
+     */
+    public function export()
+    {
+        abort_if(Gate::denies('access_specializations'), 403);
+
+        $filters = request()->only(['search']);
+
+        return Excel::download(new SpecializationsExport($filters), 'specializations_'.now()->format('Y-m-d_H-i-s').'.xlsx');
+    }
+
+    /**
+     * Import specializations from Excel.
+     */
+    public function import(Request $request)
+    {
+        abort_if(Gate::denies('access_specializations'), 403);
+
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv',
+        ]);
+
+        try {
+            Excel::import(new SpecializationsImport, $request->file('file'));
+
+            return Redirect::back()->with('message', [
+                'type' => 'success',
+                'message' => 'Specializations imported successfully!',
+            ]);
+        } catch (\Exception $e) {
+            return Redirect::back()->with('message', [
+                'type' => 'error',
+                'message' => 'Error importing specializations: '.$e->getMessage(),
+            ]);
+        }
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Settings;
+
+use App\Http\Controllers\Controller;
+use App\Models\Currency;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class CurrenciesController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        abort_if(Gate::denies('access_currencies'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $currencies = Currency::query()
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('currency_name', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('code', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('symbol', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Settings/Currencies/Index', [
+            'currencies' => $currencies,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    // No longer needed: handled by modal in index
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        abort_if(Gate::denies('access_currencies'), 403);
+
+        $request->validate([
+            'currency_name' => ['required', 'string', 'max:255'],
+            'code' => ['required', 'string', 'max:255'],
+            'symbol' => ['required', 'string', 'max:255'],
+            'thousand_separator' => ['required', 'string', 'max:255'],
+            'decimal_separator' => ['required', 'string', 'max:255'],
+        ]);
+
+        Currency::create($request->all());
+
+        cache()->clear();
+
+        return Redirect::route('currencies.index');
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Currency $currency)
+    {
+        abort_if(Gate::denies('access_currencies'), 403);
+
+        return response()->json($currency);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Currency $currency)
+    {
+        abort_if(Gate::denies('access_currencies'), 403);
+
+        $request->validate([
+            'currency_name' => ['required', 'string', 'max:255'],
+            'code' => ['required', 'string', 'max:255'],
+            'symbol' => ['required', 'string', 'max:255'],
+            'thousand_separator' => ['required', 'string', 'max:255'],
+            'decimal_separator' => ['required', 'string', 'max:255'],
+        ]);
+
+        $currency->update($request->all());
+
+        cache()->clear();
+
+        return Redirect::back();
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Currency $currency)
+    {
+        abort_if(Gate::denies('access_currencies'), 403);
+
+        $currency->delete();
+
+        return Redirect::route('currencies.index');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Settings;
+
+use App\Http\Controllers\Controller;
+use App\Models\PaymentMethod;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class PaymentMethodsController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        abort_if(Gate::denies('access_payment_methods'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $payment_methods = PaymentMethod::query()
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('method_name', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('short_code', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Settings/PaymentMethods/Index', [
+            'payment_methods' => $payment_methods,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        abort_if(Gate::denies('access_payment_methods'), 403);
+
+        $request->validate([
+            'method_name' => 'required|string|max:255|unique:payment_methods,method_name',
+            'short_code' => 'required|max:255|unique:payment_methods,short_code',
+        ]);
+
+        PaymentMethod::create($request->all());
+
+        return Redirect::route('payment-methods.index');
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        abort_if(Gate::denies('access_payment_methods'), 403);
+
+        $payment_method = PaymentMethod::findOrFail($id);
+
+        return response()->json($payment_method);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, PaymentMethod $payment_method)
+    {
+        abort_if(Gate::denies('access_payment_methods'), 403);
+
+        $request->validate([
+            'method_name' => 'required|string|max:255|unique:payment_methods,method_name,'.$payment_method->id,
+            'short_code' => 'required|max:255|unique:payment_methods,short_code,'.$payment_method->id,
+        ]);
+
+        $payment_method->update($request->all());
+
+        return Redirect::route('payment-methods.index');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(PaymentMethod $payment_method)
+    {
+        abort_if(Gate::denies('access_payment_methods'), 403);
+
+        $payment_method->delete();
+
+        return Redirect::route('payment-methods.index');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Settings;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\SettingsResource;
+use App\Models\Currency;
+use App\Models\Setting;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class SettingsController extends Controller
+{
+    public function edit()
+    {
+        abort_if(Gate::denies('access_settings'), 403);
+
+        $setting = new SettingsResource(Setting::firstOrFail());
+        $currencies = Currency::all();
+        $timezones = \DateTimeZone::listIdentifiers(\DateTimeZone::ALL);
+
+        return Inertia::render('Admin/Settings/Edit', [
+            'setting' => $setting,
+            'currencies' => $currencies,
+            'timezones' => $timezones,
+        ]);
+    }
+
+    public function update(Request $request, Setting $setting)
+    {
+        abort_if(Gate::denies('access_settings'), 403);
+
+        $request->validate([
+            'company_name' => ['required', 'string', 'max:255'],
+            'company_email' => ['required', 'string', 'max:255'],
+            'company_mobile' => ['required', 'string', 'max:255'],
+            'currency_id' => ['required', 'numeric'],
+            'vat_id' => ['nullable', 'string', 'max:255'],
+            'tax_percentage' => ['required', 'integer'],
+            'currency_position' => ['required', 'string', 'max:255'],
+            'company_address' => ['required', 'string', 'max:255'],
+            'decimal_point' => ['required', 'numeric', 'in:0,1'],
+            'time_zone' => ['required', 'string', 'max:255'],
+            'time_format' => ['required', 'string', 'max:255'],
+            'date_format' => ['required', 'string', 'max:255'],
+        ]);
+
+        $setting->update($request->except('logo', 'favicon'));
+
+        if ($request->hasFile('logo')) {
+            if ($setting->getFirstMedia('logo')) {
+                $setting->getFirstMedia('logo')->delete();
+            }
+
+            $uploaded_file = $request->file('logo');
+            $filename = uniqid().now()->timestamp.'.'.$uploaded_file->getClientOriginalExtension();
+
+            $setting->addMediaFromRequest('logo')->usingFileName($filename)
+                ->toMediaCollection('logo');
+        }
+
+        if ($request->hasFile('favicon')) {
+            if ($setting->getFirstMedia('favicon')) {
+                $setting->getFirstMedia('favicon')->delete();
+            }
+
+            $uploaded_file = $request->file('favicon');
+            $filename = uniqid().now()->timestamp.'.'.$uploaded_file->getClientOriginalExtension();
+
+            $setting->addMediaFromRequest('favicon')->usingFileName($filename)
+                ->toMediaCollection('favicon');
+        }
+
+        cache()->clear();
+
+        return Redirect::route('settings.edit');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Users;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+
+class RolesController extends Controller
+{
+    public function index()
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $roles = Role::with('permissions')
+            ->where('name', '!=', 'Super Admin')
+            ->where('name', '!=', 'Developer')
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('name', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Users/Roles/Index', [
+            'roles' => $roles,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    public function create()
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $permissions = Permission::get();
+
+        return Inertia::render('Admin/Users/Roles/Create', [
+            'permissions' => $permissions,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'permissions' => 'required|array',
+        ]);
+
+        $role = Role::create([
+            'name' => $request->name,
+        ]);
+
+        $role->givePermissionTo($request->permissions);
+
+        cache()->clear();
+
+        return Redirect::route('roles.index');
+    }
+
+    public function edit($id)
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $role = Role::with('permissions')->find($id);
+        $permissions = Permission::get();
+
+        return Inertia::render('Admin/Users/Roles/Edit', [
+            'role' => $role,
+            'permissions' => $permissions,
+        ]);
+    }
+
+    public function update(Request $request, Role $role)
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'permissions' => 'required|array',
+        ]);
+
+        $role->update([
+            'name' => $request->name,
+        ]);
+
+        $role->syncPermissions($request->permissions);
+
+        cache()->clear();
+
+        return Redirect::route('roles.index');
+    }
+
+    public function destroy(Role $role)
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $role->delete();
+
+        return Redirect::route('roles.index');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Users;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+
+class StudentsController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        abort_if(Gate::denies('view_students'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $students = User::with(['roles', 'media'])
+            ->whereHas('roles', function ($query) {
+                $query->where('name', 'student');
+            })
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('name', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('email', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Users/Students/Index', [
+            'students' => $students,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Users;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+
+class SupervisorsController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        abort_if(Gate::denies('view_supervisors'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $supervisors = User::with(['roles', 'media'])
+            ->whereHas('roles', function ($query) {
+                $query->where('name', 'supervisor');
+            })
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('name', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('email', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Users/Supervisors/Index', [
+            'supervisors' => $supervisors,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin\Users;
+
+use App\Http\Controllers\Controller;
+use App\Http\Services\UploadService;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
+
+class UsersController extends Controller
+{
+    public function index()
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $users = User::with(['roles', 'media'])
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('id', '!=', Auth::id())
+                    ->where('id', '!=', 1)
+                    ->where('name', '!=', 'Developer')
+                    ->where('name', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('email', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->where('id', '!=', Auth::id())
+            ->where('id', '!=', 1)
+            ->where('name', '!=', 'Developer')
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Users/Index', [
+            'users' => $users,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    public function create()
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $roles = Role::where('name', '!=', 'Super Admin')->where('name', '!=', 'Developer')->get();
+
+        return Inertia::render('Admin/Users/Create', [
+            'roles' => $roles,
+        ]);
+    }
+
+    public function store(Request $request, UploadService $upload)
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8|max:255|confirmed',
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        $user->assignRole($request->role);
+
+        if ($request->input('images')) {
+            $upload->uploadImage($user, $request->input('images'), 'avatar');
+        }
+
+        return Redirect::route('users.index');
+    }
+
+    public function edit(User $user)
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        return Inertia::render('Admin/Users/Edit', [
+            'user' => $user,
+            'roles' => Role::where('name', '!=', 'Super Admin')->get(),
+        ]);
+    }
+
+    public function update(Request $request, User $user, UploadService $upload)
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,'.$user->id,
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+        ]);
+
+        $user->syncRoles($request->role);
+
+        if ($request->input('images')) {
+            $upload->uploadImage($user, $request->input('images'), 'avatar');
+        }
+
+        return Redirect::route('users.index');
+    }
+
+    public function destroy(User $user)
+    {
+        abort_if(Gate::denies('access_user_management'), 403);
+
+        $user->delete();
+
+        return Redirect::route('users.index');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Providers\RouteServiceProvider;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class AuthenticatedSessionController extends Controller
+{
+    /**
+     * Display the login view.
+     */
+    public function create(): Response
+    {
+        return Inertia::render('Auth/Login', [
+            'canResetPassword' => Route::has('password.request'),
+            'canRegister' => Route::has('register'),
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Handle an incoming authentication request.
+     */
+    public function store(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticate();
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(RouteServiceProvider::HOME);
+    }
+
+    /**
+     * Destroy an authenticated session.
+     */
+    public function destroy(Request $request): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+
+        $request->session()->regenerateToken();
+
+        return redirect('/');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Providers\RouteServiceProvider;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class ConfirmablePasswordController extends Controller
+{
+    /**
+     * Show the confirm password view.
+     */
+    public function show(): Response
+    {
+        return Inertia::render('Auth/ConfirmPassword');
+    }
+
+    /**
+     * Confirm the user's password.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        if (! Auth::guard('web')->validate([
+            'email' => $request->user()->email,
+            'password' => $request->password,
+        ])) {
+            throw ValidationException::withMessages([
+                'password' => __('auth.password'),
+            ]);
+        }
+
+        $request->session()->put('auth.password_confirmed_at', time());
+
+        return redirect()->intended(RouteServiceProvider::HOME);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Providers\RouteServiceProvider;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+
+class EmailVerificationNotificationController extends Controller
+{
+    /**
+     * Send a new email verification notification.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect()->intended(RouteServiceProvider::HOME);
+        }
+
+        $request->user()->sendEmailVerificationNotification();
+
+        return back()->with('status', 'verification-link-sent');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Providers\RouteServiceProvider;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class EmailVerificationPromptController extends Controller
+{
+    /**
+     * Display the email verification prompt.
+     */
+    public function __invoke(Request $request): RedirectResponse|Response
+    {
+        return $request->user()->hasVerifiedEmail()
+                    ? redirect()->intended(RouteServiceProvider::HOME)
+                    : Inertia::render('Auth/VerifyEmail', ['status' => session('status')]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class NewPasswordController extends Controller
+{
+    /**
+     * Display the password reset view.
+     */
+    public function create(Request $request): Response
+    {
+        return Inertia::render('Auth/ResetPassword', [
+            'email' => $request->email,
+            'token' => $request->route('token'),
+        ]);
+    }
+
+    /**
+     * Handle an incoming new password request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        // Here we will attempt to reset the user's password. If it is successful we
+        // will update the password on an actual user model and persist it to the
+        // database. Otherwise we will parse the error and return the response.
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user) use ($request) {
+                $user->forceFill([
+                    'password' => Hash::make($request->password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        // If the password was successfully reset, we will redirect the user back to
+        // the application's home authenticated view. If there is an error we can
+        // redirect them back to where they came from with their error message.
+        if ($status == Password::PASSWORD_RESET) {
+            return redirect()->route('login')->with('status', __($status));
+        }
+
+        throw ValidationException::withMessages([
+            'email' => [trans($status)],
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\Rules\Password;
+
+class PasswordController extends Controller
+{
+    /**
+     * Update the user's password.
+     */
+    public function update(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', Password::defaults(), 'confirmed'],
+        ]);
+
+        $request->user()->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        Auth::logout();
+
+        return Redirect::route('login');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class PasswordResetLinkController extends Controller
+{
+    /**
+     * Display the password reset link request view.
+     */
+    public function create(): Response
+    {
+        return Inertia::render('Auth/ForgotPassword', [
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Handle an incoming password reset link request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        // We will send the password reset link to this user. Once we have attempted
+        // to send the link, we will examine the response then see the message we
+        // need to show to the user. Finally, we'll send out a proper response.
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status == Password::RESET_LINK_SENT) {
+            return back()->with('status', __($status));
+        }
+
+        throw ValidationException::withMessages([
+            'email' => [trans($status)],
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Providers\RouteServiceProvider;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
+use Inertia\Inertia;
+use Inertia\Response;
+use Spatie\Permission\Models\Role;
+
+class RegisteredUserController extends Controller
+{
+    /**
+     * Display the registration view.
+     */
+    public function create(): Response
+    {
+        $roles = Role::whereIn('name', ['student', 'supervisor'])->get();
+
+        return Inertia::render('Auth/Register', [
+            'roles' => $roles,
+        ]);
+    }
+
+    /**
+     * Handle an incoming registration request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:'.User::class,
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'role_id' => 'required|exists:roles,id',
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        // Assign role to the user
+        $role = Role::findById($request->role_id);
+        $user->assignRole($role);
+
+        event(new Registered($user));
+
+        Auth::login($user);
+
+        return redirect(RouteServiceProvider::HOME);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Providers\RouteServiceProvider;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\RedirectResponse;
+
+class VerifyEmailController extends Controller
+{
+    /**
+     * Mark the authenticated user's email address as verified.
+     */
+    public function __invoke(EmailVerificationRequest $request): RedirectResponse
+    {
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect()->intended(RouteServiceProvider::HOME.'?verified=1');
+        }
+
+        if ($request->user()->markEmailAsVerified()) {
+            event(new Verified($request->user()));
+        }
+
+        return redirect()->intended(RouteServiceProvider::HOME.'?verified=1');
+    }
+}
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Routing\Controller as BaseController;
+
+class Controller extends BaseController
+{
+    use AuthorizesRequests, ValidatesRequests;
+}
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Conversation;
+use App\Models\Message;
+use App\Models\Project;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class ConversationsController extends Controller
+{
+    /**
+     * Display a listing of user's conversations.
+     */
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+
+        $conversations = $user->conversations()
+            ->orderByDesc('conversations.last_message_at')
+            ->orderByDesc('conversations.updated_at')
+            ->with([
+                'project:id,title',
+                'participants:id,name',
+                'latestMessage' => function ($query) {
+                    $query->limit(1)->with('sender:id,name');
+                }
+            ])
+            ->get()
+            ->map(function ($conversation) use ($user) {
+                $latestMessage = $conversation->latestMessage->first();
+
+                return [
+                    'id' => $conversation->id,
+                    'type' => $conversation->type,
+                    'name' => $conversation->name ?? $conversation->project?->title ?? 'Conversation',
+                    'project_id' => $conversation->project_id,
+                    'last_message' => $latestMessage ? [
+                        'text' => $latestMessage->message,
+                        'sender' => $latestMessage->sender?->name,
+                        'created_at' => $latestMessage->created_at,
+                    ] : null,
+                    'unread_count' => $conversation->pivot->unread_count,
+                    'participants_count' => $conversation->participants->count(),
+                    'last_message_at' => $conversation->last_message_at,
+                ];
+            });
+
+        return response()->json([
+            'conversations' => $conversations,
+        ]);
+    }
+
+    /**
+     * Display the specified conversation.
+     */
+    public function show(Conversation $conversation)
+    {
+        $user = Auth::user();
+
+        // Check if user is a participant
+        if (!$conversation->participants()->where('user_id', $user->id)->exists()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Load conversation data
+        $conversation->load([
+            'project:id,title',
+            'participants' => function ($query) {
+                $query->select('users.id', 'users.name')
+                    ->withPivot('role');
+            }
+        ]);
+
+        // Get messages with pagination
+        $messages = $conversation->messages()
+            ->with('sender:id,name', 'reads.user:id,name')
+            ->latest()
+            ->take(50)
+            ->get()
+            ->reverse()
+            ->values();
+
+        // Reset unread count
+        $conversation->resetUnreadCountFor($user);
+
+        return response()->json([
+            'conversation' => [
+                'id' => $conversation->id,
+                'type' => $conversation->type,
+                'name' => $conversation->name ?? $conversation->project?->title ?? 'Conversation',
+                'project_id' => $conversation->project_id,
+                'participants' => $conversation->participants->map(function ($participant) {
+                    return [
+                        'id' => $participant->id,
+                        'name' => $participant->name,
+                        'role' => $participant->pivot->role,
+                    ];
+                }),
+            ],
+            'messages' => $messages,
+        ]);
+    }
+
+    /**
+     * Create a new project group conversation.
+     */
+    public function storeProjectChat(Request $request, Project $project)
+    {
+        $user = Auth::user();
+
+        // Check if conversation already exists for this project
+        $existingConversation = Conversation::where('project_id', $project->id)->first();
+
+        if ($existingConversation) {
+            return response()->json([
+                'conversation' => $existingConversation,
+                'message' => 'Conversation already exists',
+            ]);
+        }
+
+        // Create conversation
+        $conversation = Conversation::create([
+            'type' => 'project_group',
+            'project_id' => $project->id,
+            'name' => $project->title . ' - Chat',
+            'created_by' => $user->id,
+        ]);
+
+        // Add supervisor(s)
+        foreach ($project->supervisors as $supervisor) {
+            $conversation->addParticipant($supervisor, 'supervisor');
+        }
+
+        // Add students
+        foreach ($project->students as $student) {
+            $conversation->addParticipant($student, 'student');
+        }
+
+        // Post system message
+        Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => null,
+            'message' => 'Project chat created',
+            'type' => 'system',
+        ]);
+
+        return response()->json([
+            'conversation' => $conversation,
+            'message' => 'Conversation created successfully',
+        ], 201);
+    }
+
+    /**
+     * Get or create admin support conversation.
+     */
+    public function getOrCreateAdminSupport()
+    {
+        $user = Auth::user();
+
+        $conversation = Conversation::getOrCreateAdminSupport($user);
+
+        // Load conversation data
+        $conversation->load([
+            'participants' => function ($query) {
+                $query->select('users.id', 'users.name')
+                    ->withPivot('role');
+            }
+        ]);
+
+        return response()->json([
+            'conversation' => [
+                'id' => $conversation->id,
+                'type' => $conversation->type,
+                'name' => $conversation->name,
+                'participants' => $conversation->participants->map(function ($participant) {
+                    return [
+                        'id' => $participant->id,
+                        'name' => $participant->name,
+                        'role' => $participant->pivot->role,
+                    ];
+                }),
+            ],
+        ]);
+    }
+
+    /**
+     * Delete a conversation (Super Admin only).
+     */
+    public function destroy(Conversation $conversation)
+    {
+        $user = Auth::user();
+
+        // Only Super Admins can delete conversations
+        if (!$user->hasRole('Super Admin')) {
+            abort(403, 'Unauthorized');
+        }
+
+        $conversation->delete();
+
+        return response()->json([
+            'message' => 'Conversation deleted successfully',
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class DashboardRedirectController extends Controller
+{
+    public function redirect()
+    {
+        $user = Auth::user();
+
+        // Check user roles and redirect accordingly
+        if ($user->hasRole('student')) {
+            return redirect()->route('student.dashboard');
+        } elseif ($user->hasRole('supervisor')) {
+            return redirect()->route('supervisor.dashboard');
+        } else {
+            return redirect()->route('admin.dashboard');
+        }
+    }
+}
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Events\MessageSent;
+use App\Models\Conversation;
+use App\Models\Message;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class MessagesController extends Controller
+{
+    /**
+     * Store a new message.
+     */
+    public function store(Request $request, Conversation $conversation)
+    {
+        $user = Auth::user();
+
+        // Check if user is a participant
+        if (!$conversation->participants()->where('user_id', $user->id)->exists()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'message' => 'required|string|max:5000',
+            'type' => 'sometimes|in:text,file,system',
+        ]);
+
+        // Create message
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $user->id,
+            'message' => $validated['message'],
+            'type' => $validated['type'] ?? 'text',
+        ]);
+
+        // Update conversation last_message_at
+        $conversation->update([
+            'last_message_at' => now(),
+        ]);
+
+        // Increment unread count for other participants
+        $conversation->incrementUnreadCountExcept($user);
+
+        // Load sender relationship for response / broadcasting
+        $message->load('sender:id,name');
+
+        // Broadcast the message to other participants
+        broadcast(new MessageSent($message))->toOthers();
+
+        return response()->json([
+            'message' => $message,
+        ], 201);
+    }
+
+    /**
+     * Mark messages as read.
+     */
+    public function markAsRead(Request $request, Conversation $conversation)
+    {
+        $user = Auth::user();
+
+        // Check if user is a participant
+        if (!$conversation->participants()->where('user_id', $user->id)->exists()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Reset unread count
+        $conversation->resetUnreadCountFor($user);
+
+        // For group chats, mark individual messages as read
+        if ($conversation->isProjectGroup()) {
+            $messageIds = $request->input('message_ids', []);
+
+            if (!empty($messageIds)) {
+                $messages = Message::whereIn('id', $messageIds)
+                    ->where('conversation_id', $conversation->id)
+                    ->where('sender_id', '!=', $user->id)
+                    ->get();
+
+                foreach ($messages as $message) {
+                    $message->markAsReadBy($user);
+                }
+            }
+        }
+
+        return response()->json([
+            'message' => 'Messages marked as read',
+        ]);
+    }
+
+    /**
+     * Get older messages (pagination).
+     */
+    public function loadMore(Request $request, Conversation $conversation)
+    {
+        $user = Auth::user();
+
+        // Check if user is a participant
+        if (!$conversation->participants()->where('user_id', $user->id)->exists()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $beforeMessageId = $request->input('before_message_id');
+
+        $messages = $conversation->messages()
+            ->with('sender:id,name', 'reads.user:id,name')
+            ->where('id', '<', $beforeMessageId)
+            ->latest()
+            ->take(50)
+            ->get()
+            ->reverse()
+            ->values();
+
+        return response()->json([
+            'messages' => $messages,
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class NotificationController extends Controller
+{
+    /**
+     * Get unread notifications for the authenticated user.
+     */
+    public function index()
+    {
+        $notifications = Auth::user()
+            ->unreadNotifications()
+            ->take(10)
+            ->get()
+            ->map(function ($notification) {
+                return [
+                    'id' => $notification->id,
+                    'type' => $notification->data['type'] ?? 'info',
+                    'title' => $notification->data['title'] ?? 'Notification',
+                    'message' => $notification->data['message'] ?? '',
+                    'url' => $notification->data['url'] ?? null,
+                    'icon' => $notification->data['icon'] ?? 'ri-notification-line',
+                    'icon_color' => $notification->data['icon_color'] ?? 'text-primary',
+                    'created_at' => $notification->created_at->diffForHumans(),
+                ];
+            });
+
+        return response()->json([
+            'notifications' => $notifications,
+            'unread_count' => Auth::user()->unreadNotifications()->count(),
+        ]);
+    }
+
+    /**
+     * Mark a notification as read.
+     */
+    public function markAsRead($id)
+    {
+        $notification = Auth::user()
+            ->unreadNotifications()
+            ->where('id', $id)
+            ->first();
+
+        if ($notification) {
+            $notification->markAsRead();
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Mark all notifications as read.
+     */
+    public function markAllAsRead()
+    {
+        Auth::user()->unreadNotifications->markAsRead();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Delete a notification.
+     */
+    public function destroy($id)
+    {
+        $notification = Auth::user()
+            ->notifications()
+            ->where('id', $id)
+            ->first();
+
+        if ($notification) {
+            $notification->delete();
+        }
+
+        return response()->json(['success' => true]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\ProfileUpdateRequest;
+use App\Http\Services\UploadService;
+use Carbon\Carbon;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class ProfileController extends Controller
+{
+    /**
+     * Display the user's profile form.
+     */
+    public function edit(Request $request): Response
+    {
+        return Inertia::render('Profile/Edit', [
+            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Update the user's profile information.
+     */
+    public function update(ProfileUpdateRequest $request, UploadService $upload): RedirectResponse
+    {
+        $request->user()->fill($request->all());
+
+        if ($request->user()->date_of_birth) {
+            $request->user()->date_of_birth = Carbon::parse($request->date_of_birth)
+                ->format('Y-m-d');
+        }
+
+        if ($request->user()->isDirty('email')) {
+            $request->user()->email_verified_at = null;
+        }
+
+        $request->user()->save();
+
+        if ($request->input('images')) {
+            $upload->uploadImage(Auth::user(), $request->input('images'), 'avatar');
+        }
+
+        return Redirect::route('profile.edit');
+    }
+
+    /**
+     * Delete the user's account.
+     */
+    public function destroy(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'password' => ['required', 'current_password'],
+        ]);
+
+        $user = $request->user();
+
+        Auth::logout();
+
+        $user->delete();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return Redirect::to('/');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Student;
+
+use App\Http\Controllers\Controller;
+use App\Models\Project;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class AssignedProjectsController extends Controller
+{
+    /**
+     * Display a listing of assigned projects.
+     */
+    public function index()
+    {
+        $user = Auth::user();
+        $per_page = request()->input('per_page') ?? 10;
+
+        // Get projects assigned to this student
+        $assignedProjectIds = $user->assignments()
+            ->where('role', 'student')
+            ->pluck('project_id');
+
+        $projects = Project::whereIn('id', $assignedProjectIds)
+            ->with(['department', 'specialization', 'creator', 'supervisors', 'students'])
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('title', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('project_type', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Student/AssignedProjects/Index', [
+            'projects' => $projects,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Display the specified assigned project.
+     */
+    public function show(Project $project)
+    {
+        $user = Auth::user();
+
+        // Ensure student can only view projects assigned to them
+        $isAssigned = $user->assignments()
+            ->where('role', 'student')
+            ->where('project_id', $project->id)
+            ->exists();
+
+        abort_if(!$isAssigned, 403);
+
+        $project->load([
+            'department',
+            'specialization',
+            'creator',
+            'supervisors',
+            'students',
+            'defenses' => function ($query) {
+                $query->with('members')->latest('discussion_date');
+            },
+        ]);
+
+        return Inertia::render('Student/AssignedProjects/Show', [
+            'project' => $project,
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Student;
+
+use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\ProjectRequest;
+use App\Models\User;
+use App\Notifications\ProjectRequestNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class AvailableProjectsController extends Controller
+{
+    /**
+     * Display a listing of available projects.
+     */
+    public function index()
+    {
+        // Check if student is already assigned to any project
+        $hasAssignment = Auth::user()->assignments()
+            ->where('role', 'student')
+            ->exists();
+
+        if ($hasAssignment) {
+            return Inertia::render('Student/AvailableProjects/Index', [
+                'projects' => null,
+                'hasAssignment' => true,
+                'filters' => request()->all('search', 'per_page'),
+            ]);
+        }
+
+        $per_page = request()->input('per_page') ?? 10;
+
+        $projects = Project::query()
+            ->with(['department', 'specialization', 'creator', 'supervisors', 'students'])
+            ->where('status', 'Approved')
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('title', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('project_type', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->withCount('students')
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Student/AvailableProjects/Index', [
+            'projects' => $projects,
+            'hasAssignment' => false,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Display the specified project.
+     */
+    public function show(Project $project)
+    {
+        abort_if($project->status !== 'Approved', 404);
+
+        // Check if student is already assigned to any project
+        $hasAssignment = Auth::user()->assignments()
+            ->where('role', 'student')
+            ->exists();
+
+        if ($hasAssignment) {
+            return Redirect::route('student.available-projects.index')
+                ->with('error', 'You are already assigned to a project and cannot request another one.');
+        }
+
+        $project->load([
+            'department',
+            'specialization',
+            'creator',
+            'supervisors',
+            'students',
+        ]);
+
+        // Check if student has already requested this project
+        $existingRequest = ProjectRequest::where('project_id', $project->id)
+            ->where('student_id', Auth::id())
+            ->first();
+
+        // Check if student is already assigned to this project
+        $isAssigned = Auth::user()->assignments()
+            ->where('project_id', $project->id)
+            ->where('role', 'student')
+            ->exists();
+
+        // Get all students (excluding current user)
+        $students = User::role('student')
+            ->where('id', '!=', Auth::id())
+            ->select('id', 'name', 'email')
+            ->get();
+
+        return Inertia::render('Student/AvailableProjects/Show', [
+            'project' => $project,
+            'existingRequest' => $existingRequest,
+            'isAssigned' => $isAssigned,
+            'students' => $students,
+        ]);
+    }
+
+    /**
+     * Store a project request.
+     */
+    public function requestProject(Request $request, Project $project)
+    {
+        abort_if($project->status !== 'Approved', 404);
+
+        $validated = $request->validate([
+            'request_type' => 'required|in:individual,group',
+            'group_members' => 'required_if:request_type,group|array|min:1|max:2',
+            'group_members.*' => 'exists:users,id|different:'.Auth::id(),
+            'message' => 'nullable|string|max:500',
+        ], [
+            'group_members.required_if' => 'Please select at least one group member.',
+            'group_members.max' => 'You can only select a maximum of 2 group members (3 students total including you).',
+            'group_members.*.exists' => 'One or more selected students are invalid.',
+            'group_members.*.different' => 'You cannot add yourself as a group member.',
+        ]);
+
+        // Check if student already has a pending request for this project
+        $existingRequest = ProjectRequest::where('project_id', $project->id)
+            ->where('student_id', Auth::id())
+            ->where('status', 'pending')
+            ->first();
+
+        if ($existingRequest) {
+            return Redirect::back()->with('error', 'You already have a pending request for this project.');
+        }
+
+        // Check if student is already assigned to this project
+        $isAssigned = Auth::user()->assignments()
+            ->where('project_id', $project->id)
+            ->where('role', 'student')
+            ->exists();
+
+        if ($isAssigned) {
+            return Redirect::back()->with('error', 'You are already assigned to this project.');
+        }
+
+        // Check if project would exceed 3 students if this request is approved
+        $currentStudentCount = $project->students()->count();
+        $requestedStudentCount = $validated['request_type'] === 'group' ? count($validated['group_members']) + 1 : 1;
+
+        if ($currentStudentCount + $requestedStudentCount > 3) {
+            return Redirect::back()->with('error', 'This project cannot accommodate your request as it would exceed the maximum of 3 students per project.');
+        }
+
+        $projectRequest = ProjectRequest::create([
+            'project_id' => $project->id,
+            'student_id' => Auth::id(),
+            'request_type' => $validated['request_type'],
+            'group_members' => $validated['request_type'] === 'group' ? $validated['group_members'] : null,
+            'message' => $validated['message'] ?? null,
+            'status' => 'pending',
+        ]);
+
+        // Load relationships for notification
+        $projectRequest->load(['project', 'student']);
+
+        // Notify all admins about the new project request
+        $admins = User::role('admin')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new ProjectRequestNotification($projectRequest));
+        }
+
+        return Redirect::route('student.available-projects.index')
+            ->with('success', 'Project request submitted successfully!');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Student\Dashboard;
+
+use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\Defense;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class DashboardController extends Controller
+{
+    public function dashboard()
+    {
+        $user = Auth::user();
+
+        // Get projects assigned to this student
+        $assignedProjectIds = $user->assignments()
+            ->where('role', 'student')
+            ->pluck('project_id');
+
+        $myProjects = Project::whereIn('id', $assignedProjectIds)
+            ->with(['department', 'specialization', 'creator'])
+            ->latest()
+            ->get();
+
+        // Get defenses for student's assigned projects
+        $myDefenses = Defense::whereIn('project_id', $assignedProjectIds)
+            ->with(['project.department', 'project.creator'])
+            ->latest()
+            ->get();
+
+        // Calculate statistics
+        $statistics = [
+            'total_projects' => $myProjects->count(),
+            'approved_projects' => $myProjects->where('status', 'Approved')->count(),
+            'pending_projects' => $myProjects->where('status', 'Proposed')->count(),
+            'total_defenses' => $myDefenses->count(),
+        ];
+
+        return Inertia::render('Student/Dashboard', [
+            'statistics' => $statistics,
+            'myProjects' => $myProjects->take(5), // Latest 5 projects
+            'myDefenses' => $myDefenses->take(5), // Latest 5 defenses
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Student;
+
+use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\ProjectAssignment;
+use App\Models\ProjectSubmission;
+use App\Notifications\ChapterSubmittedNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+
+class ProjectSubmissionsController extends Controller
+{
+    /**
+     * Display a listing of the submissions for student's assigned project.
+     */
+    public function index()
+    {
+        // Get all projects assigned to this student
+        $assignments = ProjectAssignment::where('user_id', Auth::id())
+            ->where('role', 'student')
+            ->with('project')
+            ->get();
+
+        if ($assignments->isEmpty()) {
+            return Inertia::render('Student/ProjectSubmissions/Index', [
+                'projects' => [],
+                'selectedProject' => null,
+                'submissions' => [],
+                'groupMembers' => [],
+                'error' => 'You are not assigned to any project yet.',
+            ]);
+        }
+
+        // Get selected project from query or use first one
+        $projectId = request()->query('project_id');
+
+        if ($projectId) {
+            $selectedAssignment = $assignments->firstWhere('project_id', $projectId);
+        } else {
+            $selectedAssignment = $assignments->first();
+        }
+
+        $selectedProject = $selectedAssignment ? $selectedAssignment->project : null;
+
+        // Load all submissions for the selected project
+        $submissions = [];
+        $groupMembers = [];
+
+        if ($selectedProject) {
+            $submissions = ProjectSubmission::where('project_id', $selectedProject->id)
+                ->with(['uploadedBy:id,name,email', 'reviewer:id,name'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            // Get all students assigned to this project
+            $groupMembers = ProjectAssignment::where('project_id', $selectedProject->id)
+                ->where('role', 'student')
+                ->with('user:id,name,email')
+                ->get()
+                ->pluck('user');
+        }
+
+        return Inertia::render('Student/ProjectSubmissions/Index', [
+            'projects' => $assignments->pluck('project'),
+            'selectedProject' => $selectedProject,
+            'submissions' => $submissions,
+            'groupMembers' => $groupMembers,
+        ]);
+    }
+
+    /**
+     * Store a newly created submission.
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'project_id' => 'required|exists:projects,id',
+            'chapter_type' => 'required|in:Introduction,Literature Review,Methodology,Result & Analysis,Conclusion,Abstract,Full Draft',
+            'file' => 'nullable|required_without:code_link|file|mimes:pdf,doc,docx|max:10240', // 10MB max
+            'code_link' => 'nullable|required_without:file|url|max:500',
+        ], [
+            'file.required_without' => 'Please either upload a file or provide a code link.',
+            'code_link.required_without' => 'Please either upload a file or provide a code link.',
+            'code_link.url' => 'Please provide a valid URL for the code link.',
+        ]);
+
+        // Verify student is assigned to this project
+        $assignment = ProjectAssignment::where('user_id', Auth::id())
+            ->where('role', 'student')
+            ->where('project_id', $request->project_id)
+            ->first();
+
+        if (! $assignment) {
+            return Redirect::back()->with('error', 'You are not assigned to this project.');
+        }
+
+        // Store the file if provided
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('project-submissions', 'public');
+        }
+
+        // Create submission
+        $submission = ProjectSubmission::create([
+            'project_id' => $request->project_id,
+            'uploaded_by' => Auth::id(),
+            'chapter_type' => $request->chapter_type,
+            'file_path' => $filePath,
+            'code_link' => $request->code_link,
+            'status' => 'pending',
+        ]);
+
+        // Load relationships for notification
+        $submission->load(['project', 'uploadedBy']);
+
+        // Notify all supervisors of this project
+        $project = Project::find($request->project_id);
+        $supervisors = $project->supervisors;
+
+        foreach ($supervisors as $supervisor) {
+            $supervisor->notify(new ChapterSubmittedNotification($submission));
+        }
+
+        return Redirect::back()->with('success', 'Chapter submitted successfully!');
+    }
+
+    /**
+     * Remove the specified submission (only if student owns it and it's pending).
+     */
+    public function destroy(ProjectSubmission $projectSubmission)
+    {
+        // Verify student owns this submission
+        if ($projectSubmission->uploaded_by !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Only allow deletion if pending
+        if ($projectSubmission->status !== 'pending') {
+            return Redirect::back()->with('error', 'Cannot delete reviewed submissions.');
+        }
+
+        // Delete the file
+        if (Storage::disk('public')->exists($projectSubmission->file_path)) {
+            Storage::disk('public')->delete($projectSubmission->file_path);
+        }
+
+        $projectSubmission->delete();
+
+        return Redirect::back()->with('success', 'Submission deleted successfully!');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Supervisor\Dashboard;
+
+use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\Defense;
+use App\Models\ProjectAssignment;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class DashboardController extends Controller
+{
+    public function dashboard()
+    {
+        $user = Auth::user();
+
+        // Get projects supervised by this user
+        $supervisedProjectIds = ProjectAssignment::where('user_id', $user->id)
+            ->where('role', 'supervisor')
+            ->pluck('project_id');
+
+        $supervisedProjects = Project::whereIn('id', $supervisedProjectIds)
+            ->with(['department', 'specialization', 'creator'])
+            ->latest()
+            ->get();
+
+        // Get defenses where supervisor is a discussion member
+        $supervisedDefenses = Defense::whereHas('members', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
+        ->with(['project.department', 'project.creator'])
+        ->latest()
+        ->get();
+
+        // Calculate statistics
+        $statistics = [
+            'total_supervised_projects' => $supervisedProjects->count(),
+            'approved_projects' => Project::where('created_by', $user->id)->where('status', 'Approved')->count(),
+            'pending_projects' => Project::where('created_by', $user->id)->where('status', 'Proposed')->count(),
+            'declined_projects' => $supervisedProjects->where('status', 'declined')->count(),
+            'total_defenses' => $supervisedDefenses->count(),
+            'completed_defenses' => $supervisedDefenses->where('status', 'completed')->count(),
+            'scheduled_defenses' => $supervisedDefenses->where('status', 'scheduled')->count(),
+        ];
+
+        return Inertia::render('Supervisor/Dashboard', [
+            'statistics' => $statistics,
+            'supervisedProjects' => $supervisedProjects->take(5), // Latest 5 projects
+            'supervisedDefenses' => $supervisedDefenses->take(5), // Latest 5 defenses
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Supervisor\Dashboard;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\ProjectAssignment;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class StudentsController extends Controller
+{
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+
+        // Get all projects where this user is a supervisor
+        $supervisedProjectIds = ProjectAssignment::where('user_id', $user->id)
+            ->where('role', 'supervisor')
+            ->pluck('project_id');
+
+        // Get all students assigned to these projects
+        $students = User::whereHas('projectAssignments', function ($query) use ($supervisedProjectIds) {
+            $query->whereIn('project_id', $supervisedProjectIds)
+                  ->where('role', 'student');
+        })
+        ->with(['projectAssignments' => function ($query) use ($supervisedProjectIds) {
+            $query->whereIn('project_id', $supervisedProjectIds)
+                  ->where('role', 'student')
+                  ->with('project:id,title,project_type,status');
+        }])
+        ->when($request->search, function ($query, $search) {
+            $query->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+        })
+        ->latest()
+        ->paginate($request->per_page ?? 10)
+        ->withQueryString();
+
+        return Inertia::render('Supervisor/Students/Index', [
+            'students' => $students,
+            'filters' => $request->only(['search', 'per_page']),
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Supervisor;
+
+use App\Http\Controllers\Controller;
+use App\Models\Defense;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class DefensesController extends Controller
+{
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+
+        // Get defenses where user is a committee member
+        $defenses = Defense::whereHas('members', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
+        ->with(['project.department', 'project.specialization', 'project.creator', 'members'])
+        ->when($request->search, function ($query, $search) {
+            $query->whereHas('project', function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%");
+            });
+        })
+        ->when($request->status, function ($query, $status) {
+            $query->where('status', $status);
+        })
+        ->when($request->type, function ($query, $type) {
+            $query->where('discussion_type', $type);
+        })
+        ->latest('discussion_date')
+        ->paginate($request->per_page ?? 10)
+        ->withQueryString();
+
+        return Inertia::render('Supervisor/Defenses/Index', [
+            'defenses' => $defenses,
+            'filters' => $request->only(['search', 'per_page', 'status', 'type']),
+        ]);
+    }
+
+    public function show(Defense $defense)
+    {
+        $user = Auth::user();
+
+        // Verify that the user is a committee member for this defense
+        $isMember = $defense->members()
+            ->where('user_id', $user->id)
+            ->exists();
+
+        abort_unless($isMember, 403, 'Unauthorized access to this defense.');
+
+        $defense->load([
+            'project.department',
+            'project.specialization',
+            'project.creator',
+            'project.supervisors.media',
+            'project.students.media',
+            'members.media',
+            'creator',
+        ]);
+
+        return Inertia::render('Supervisor/Defenses/Show', [
+            'defense' => $defense,
+        ]);
+    }
+
+    public function updateStatus(Request $request, Defense $defense)
+    {
+        $user = Auth::user();
+
+        // Verify that the user is a committee member for this defense
+        $isMember = $defense->members()
+            ->where('user_id', $user->id)
+            ->exists();
+
+        abort_unless($isMember, 403, 'Unauthorized to update this defense.');
+
+        $request->validate([
+            'status' => 'required|in:scheduled,completed,cancelled',
+        ]);
+
+        $defense->update(['status' => $request->status]);
+
+        return redirect()->back();
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Supervisor;
+
+use App\Http\Controllers\Controller;
+use App\Models\Department;
+use App\Models\Project;
+use App\Models\Specialization;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class ProjectsController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        $per_page = request()->input('per_page') ?? 10;
+
+        $projects = Project::query()
+            ->with(['department', 'specialization', 'creator'])
+            ->where('created_by', Auth::id())
+            ->when(request()->has('search'), function ($query) {
+                return $query
+                    ->where('title', 'LIKE', '%'.request()->input('search').'%')
+                    ->orWhere('project_type', 'LIKE', '%'.request()->input('search').'%');
+            })
+            ->latest()
+            ->paginate($per_page)
+            ->withQueryString();
+
+        return Inertia::render('Supervisor/Projects/Index', [
+            'projects' => $projects,
+            'filters' => request()->all('search', 'per_page'),
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        $departments = Department::all();
+        $specializations = Specialization::all();
+
+        return Inertia::render('Supervisor/Projects/Create', [
+            'departments' => $departments,
+            'specializations' => $specializations,
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255|unique:projects,title',
+            'description' => 'required|string',
+            'project_type' => 'required|string|in:Semester,Graduation 1,Graduation 2',
+            'specialization_id' => 'required|exists:specializations,id',
+            'department_id' => 'required|exists:departments,id',
+        ], [
+            'title.unique' => 'A project with this title already exists. Please use a different title.',
+        ]);
+
+        Project::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'project_type' => $request->project_type,
+            'specialization_id' => $request->specialization_id,
+            'department_id' => $request->department_id,
+            'status' => 'Proposed',
+            'created_by' => Auth::id(),
+        ]);
+
+        return Redirect::route('supervisor.projects.index');
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Project $project)
+    {
+        abort_if($project->created_by !== Auth::id(), 403);
+
+        $project->load([
+            'department',
+            'specialization',
+            'creator',
+            'supervisors',
+            'students',
+            'defenses' => function ($query) {
+                $query->with('members')->latest('discussion_date');
+            },
+        ]);
+
+        return Inertia::render('Supervisor/Projects/Show', [
+            'project' => $project,
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Project $project)
+    {
+        abort_if($project->created_by !== Auth::id(), 403);
+
+        $departments = Department::all();
+        $specializations = Specialization::all();
+
+        $project->load(['department', 'specialization']);
+
+        return Inertia::render('Supervisor/Projects/Edit', [
+            'project' => $project,
+            'departments' => $departments,
+            'specializations' => $specializations,
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Project $project)
+    {
+        abort_if($project->created_by !== Auth::id(), 403);
+
+        $request->validate([
+            'title' => 'required|string|max:255|unique:projects,title,'.$project->id,
+            'description' => 'required|string',
+            'project_type' => 'required|string|in:Semester,Graduation 1,Graduation 2',
+            'specialization_id' => 'required|exists:specializations,id',
+            'department_id' => 'required|exists:departments,id',
+        ], [
+            'title.unique' => 'A project with this title already exists. Please use a different title.',
+        ]);
+
+        $project->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'project_type' => $request->project_type,
+            'specialization_id' => $request->specialization_id,
+            'department_id' => $request->department_id,
+        ]);
+
+        return Redirect::route('supervisor.projects.index');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Project $project)
+    {
+        abort_if($project->created_by !== Auth::id(), 403);
+
+        $project->delete();
+
+        return Redirect::route('supervisor.projects.index');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Supervisor;
+
+use App\Http\Controllers\Controller;
+use App\Models\ProjectAssignment;
+use App\Models\ProjectSubmission;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class ProjectSubmissionsController extends Controller
+{
+    /**
+     * Display a listing of submissions for supervisor's projects.
+     */
+    public function index()
+    {
+        // Get all projects supervised by this user
+        $supervisedProjectIds = ProjectAssignment::where('user_id', Auth::id())
+            ->where('role', 'supervisor')
+            ->pluck('project_id');
+
+        // Get all submissions for these projects
+        $submissions = ProjectSubmission::whereIn('project_id', $supervisedProjectIds)
+            ->with([
+                'project:id,title',
+                'uploadedBy:id,name,email',
+                'reviewer:id,name',
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return Inertia::render('Supervisor/ProjectSubmissions/Index', [
+            'submissions' => $submissions,
+        ]);
+    }
+
+    /**
+     * Display the specified submission.
+     */
+    public function show(ProjectSubmission $projectSubmission)
+    {
+        // Verify supervisor has access to this project
+        $hasAccess = ProjectAssignment::where('user_id', Auth::id())
+            ->where('role', 'supervisor')
+            ->where('project_id', $projectSubmission->project_id)
+            ->exists();
+
+        if (! $hasAccess) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $projectSubmission->load([
+            'project:id,title',
+            'uploadedBy:id,name,email',
+            'reviewer:id,name',
+        ]);
+
+        return Inertia::render('Supervisor/ProjectSubmissions/Show', [
+            'submission' => $projectSubmission,
+        ]);
+    }
+
+    /**
+     * Update the status of a submission (approve/reject with feedback).
+     */
+    public function updateStatus(Request $request, ProjectSubmission $projectSubmission)
+    {
+        // Verify supervisor has access to this project
+        $hasAccess = ProjectAssignment::where('user_id', Auth::id())
+            ->where('role', 'supervisor')
+            ->where('project_id', $projectSubmission->project_id)
+            ->exists();
+
+        if (! $hasAccess) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'status' => 'required|in:approved,rejected,pending',
+            'supervisor_feedback' => 'nullable|string',
+        ]);
+
+        $projectSubmission->update([
+            'status' => $request->status,
+            'supervisor_feedback' => $request->supervisor_feedback,
+            'reviewed_by' => Auth::id(),
+            'reviewed_at' => now(),
+        ]);
+
+        return Redirect::back()->with('success', 'Submission status updated successfully!');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Supervisor;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\ProjectAssignment;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class StudentsController extends Controller
+{
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+
+        // Get all projects where this user is a supervisor
+        $supervisedProjectIds = ProjectAssignment::where('user_id', $user->id)
+            ->where('role', 'supervisor')
+            ->pluck('project_id');
+
+        // Get all students assigned to these projects
+        $students = User::whereHas('assignments', function ($query) use ($supervisedProjectIds) {
+            $query->whereIn('project_id', $supervisedProjectIds)
+                  ->where('role', 'student');
+        })
+        ->with(['assignments' => function ($query) use ($supervisedProjectIds) {
+            $query->whereIn('project_id', $supervisedProjectIds)
+                  ->where('role', 'student')
+                  ->with('project:id,title,project_type,status');
+        }])
+        ->when($request->search, function ($query, $search) {
+            $query->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+        })
+        ->latest()
+        ->paginate($request->per_page ?? 10)
+        ->withQueryString();
+
+        return Inertia::render('Supervisor/Students/Index', [
+            'students' => $students,
+            'filters' => $request->only(['search', 'per_page']),
+        ]);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Supervisor;
+
+use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\ProjectSubmission;
+use App\Notifications\SubmissionFeedbackNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+
+class SupervisedProjectsController extends Controller
+{
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+
+        // Get projects where user is assigned as supervisor through project_assignments table
+        $projects = Project::whereHas('assignments', function ($query) use ($user) {
+            $query->where('user_id', $user->id)
+                ->where('role', 'supervisor');
+        })
+            ->with(['department', 'specialization', 'creator'])
+            ->when($request->search, function ($query, $search) {
+                $query->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            })
+            ->latest()
+            ->paginate($request->per_page ?? 10)
+            ->withQueryString();
+
+        return Inertia::render('Supervisor/SupervisedProjects/Index', [
+            'projects' => $projects,
+            'filters' => $request->only(['search', 'per_page']),
+        ]);
+    }
+
+    public function show(Project $project)
+    {
+        $user = Auth::user();
+
+        // Verify that the user is a supervisor for this project
+        $isSupervisor = $project->assignments()
+            ->where('user_id', $user->id)
+            ->where('role', 'supervisor')
+            ->exists();
+
+        abort_unless($isSupervisor, 403, 'Unauthorized access to this project.');
+
+        $project->load([
+            'department',
+            'specialization',
+            'creator',
+            'supervisors.media',
+            'students.media',
+            'defenses.members',
+        ]);
+
+        // Load project submissions
+        $submissions = $project->submissions()
+            ->with(['uploadedBy:id,name,email', 'reviewer:id,name'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return Inertia::render('Supervisor/SupervisedProjects/Show', [
+            'project' => $project,
+            'submissions' => $submissions,
+        ]);
+    }
+
+    /**
+     * Update the project type.
+     */
+    public function updateType(Request $request, Project $project): \Illuminate\Http\RedirectResponse
+    {
+        $user = Auth::user();
+
+        // Verify that the user is a supervisor for this project
+        $isSupervisor = $project->assignments()
+            ->where('user_id', $user->id)
+            ->where('role', 'supervisor')
+            ->exists();
+
+        abort_unless($isSupervisor, 403, 'Unauthorized to update this project.');
+
+        $request->validate([
+            'project_type' => 'required|in:Semester,Graduation 1,Graduation 2',
+        ]);
+
+        $project->update([
+            'project_type' => $request->project_type,
+        ]);
+
+        return Redirect::back()->with('success', 'Project type updated successfully!');
+    }
+
+    /**
+     * Update submission status with feedback.
+     */
+    public function updateSubmissionStatus(Request $request, ProjectSubmission $projectSubmission): \Illuminate\Http\RedirectResponse
+    {
+        $user = Auth::user();
+
+        // Verify supervisor has access to this project
+        $hasAccess = $projectSubmission->project->assignments()
+            ->where('user_id', $user->id)
+            ->where('role', 'supervisor')
+            ->exists();
+
+        abort_unless($hasAccess, 403, 'Unauthorized action.');
+
+        $request->validate([
+            'status' => 'required|in:approved,rejected,pending',
+            'supervisor_feedback' => 'nullable|string',
+        ]);
+
+        $projectSubmission->update([
+            'status' => $request->status,
+            'supervisor_feedback' => $request->supervisor_feedback,
+            'reviewed_by' => Auth::id(),
+            'reviewed_at' => now(),
+        ]);
+
+        // Load relationships for notification
+        $projectSubmission->load(['project', 'uploadedBy']);
+
+        // Notify the student who uploaded this submission
+        $projectSubmission->uploadedBy->notify(new SubmissionFeedbackNotification($projectSubmission));
+
+        return Redirect::back()->with('success', 'Submission status updated successfully!');
+    }
+}
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Upload;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Spatie\Image\Enums\ImageDriver;
+use Spatie\Image\Image;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
+
+class UploadsController extends Controller
+{
+    public function filepondUpload(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:png,jpeg,jpg',
+        ]);
+
+        if ($request->hasFile('image')) {
+            $uploaded_file = $request->file('image');
+            $filename = uniqid().now()->timestamp.'.'.$uploaded_file->getClientOriginalExtension();
+            $folder = uniqid().'-'.now()->timestamp;
+
+            $image = Image::useImageDriver(ImageDriver::Gd)->loadFile($uploaded_file->getRealPath());
+
+            $image->optimize();
+
+            $image->save(Storage::path('temp/'.$filename));
+
+            Upload::create([
+                'folder' => $folder,
+                'filename' => $filename,
+            ]);
+
+            return $filename;
+        }
+
+        return false;
+    }
+
+    public function filepondRevert(Request $request, $filename)
+    {
+        $upload = Upload::where('filename', $filename)->first();
+
+        Storage::delete('temp/'.$upload->filename);
+        $upload->delete();
+
+        return response(null);
+    }
+
+    public function filepondRemove(Request $request, $filename)
+    {
+        $file = Media::where('file_name', $filename)->first();
+
+        $file->delete();
+
+        return response(null);
+    }
+}
