@@ -92,3 +92,5 @@ php artisan serve
 ```
 
 Application will be available at `http://127.0.0.1:8000`.
+### important note: import database to phpmyadmin for best roles and permissions "no seeders for them"
+### try as admin (super.admin@test.com -> 1234)
