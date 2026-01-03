@@ -53,7 +53,7 @@ php artisan key:generate
 
 ### 6. Create Database
 
-Create a new MySQL database named `thesis_manager` (or whatever you specified in your `.env` file).
+Create a new MySQL database named `thesis_manager`.
 
 ### 7. Run Database Migrations
 
