@@ -1,0 +1,26 @@
+.form-control {
+    padding: 0.5rem 1rem;
+    font-size: 0.945rem;
+    @include media-breakpoint-up(lg) {
+        &.form-control-lg {
+            padding: $inpu-lg-padding-y $input-padding-x;
+        }
+    }
+}
+
+.search-bar {
+    .form-control {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        width: 280px;
+        transition: width 0.2s ease-in-out;
+
+        @include media-breakpoint-down(sm) {
+            width: 120px;
+
+            &:focus {
+                width: 150px;
+            }
+        }
+    }
+}
