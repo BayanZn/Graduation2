@@ -53,7 +53,7 @@ php artisan key:generate
 
 ### 6. Create Database
 
-Create a new MySQL database named `thesis_manager` (or whatever you specified in your `.env` file).
+Create a new MySQL database named `thesis_manager`.
 
 ### 7. Run Database Migrations
 
@@ -92,3 +92,5 @@ php artisan serve
 ```
 
 Application will be available at `http://127.0.0.1:8000`.
+### important note: import database to phpmyadmin for best roles and permissions "no seeders for them"
+### try as admin (super.admin@test.com -> 1234)
